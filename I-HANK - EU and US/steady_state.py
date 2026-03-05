@@ -147,8 +147,8 @@ def evaluate_ss(model,do_print=False):
     ss.CTF = par.alphaF*ss.CT
 
     # --- EU exports/consumption and production objects in SS ---
-    ss.X_eu_to_dk = ss.CTF              # EU exports to DK equal DK imports (foreign good)
-    ss.C_eu = ss.Y_eu - ss.X_eu_to_dk   # EU consumes the residual
+    #ss.X_eu_to_dk = ss.CTF              # EU exports to DK equal DK imports (foreign good)
+    #ss.C_eu = ss.Y_eu - ss.X_eu_to_dk   # EU consumes the residual
     ss.N_eu = ss.Y_eu / ss.Z_eu         # production: Y = Z*N
 
     # EU real marginal cost (if your EU NKPC uses mc_eu)

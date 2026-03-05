@@ -36,7 +36,7 @@ def eu_nk(par, ini, ss,
           rn_eu, i_shock_eu, Z_eu,
           x_eu, pi_eu, i_eu,
           PF_eu_s, rF_eu, M_eu_s,   # <-- ADD M_eu_s here
-          CTF, X_eu_to_dk, C_eu, Y_eu, N_eu, mc_eu,
+          Y_eu, N_eu, mc_eu,
           eu_IS_res, eu_NKPC_res, eu_TR_res):
     """Closed simple EU NK block (log-linear in x and pi), producing PF_eu_s (EU price level).
 
@@ -55,7 +55,7 @@ def eu_nk(par, ini, ss,
     eu_TR_res[:] = i_eu - (ss.i_eu
                            + par.phi_pi_eu * (pi_eu - ss.pi_eu)
                            + par.phi_x_eu * (x_eu - ss.x_eu)
-                           + i_shock_eu)
+                           )+ i_shock_eu
 
     # 2) IS curve residual: x_t = E x_{t+1} - (1/sigma)(i_t - E pi_{t+1} - rn_t)
     x_plus = lead(x_eu, ss.x_eu)
@@ -80,10 +80,10 @@ def eu_nk(par, ini, ss,
     M_eu_s[:] = ss.M_eu_s * np.exp(par.chi_M_eu * x_eu)
 
     # Optional accounting: EU exports and absorption
-    X_eu_to_dk[:] = CTF
+    #X_eu_to_dk[:] = CTF
     Y_eu[:] = ss.Y_eu * (1.0 + x_eu)
     N_eu[:] = Y_eu / Z_eu
-    C_eu[:] = Y_eu - X_eu_to_dk
+    #C_eu[:] = Y_eu - X_eu_to_dk
 
 @nb.njit
 def mon_pol(par,ini,ss,E,CB):

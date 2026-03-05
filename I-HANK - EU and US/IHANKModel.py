@@ -123,10 +123,6 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.Na = 500 # number of grid points
 
         # h. shocks
-        par.jump_M_eu_s = 0.00 # initial jump
-        par.rho_M_eu_s = 0.00 # AR(1) coefficeint
-        par.std_M_eu_S = 0.00 # std.
-
         par.jump_beta = 0.00 # initial jump
         par.rho_beta = 0.00 # AR(1) coefficeint
         par.std_beta = 0.00 # std.
