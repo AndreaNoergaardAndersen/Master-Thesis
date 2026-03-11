@@ -30,17 +30,21 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.shocks = ['ZTH','ZNT', #domestic TFPs
                        'beta','G', #Domestic preference and fiscal shocks
                        'i_shock', #domestic monetary shock (keep at zero under peg)
-                       'rn_eu','i_shock_eu', 'Z_eu' # EU natural-rate, monetary shocks and foreign TFP
-                       ] #
+                       'rn_eu','i_shock_eu', 'Z_eu', # EU natural-rate, monetary shocks and foreign TFP
+                       'rn_us','i_shock_us', 'Z_us'] # US natural-rate, monetary shocks and foreign TFP
         self.unknowns = ['CB','NNT','NTH','piWTH','piWNT', #original # endogenous inputs
-                         'x_eu', 'pi_eu', 'i_eu'] #new
+                         'x_eu', 'pi_eu', 'i_eu',#EU
+                         'x_us', 'pi_us', 'i_us', 'CB_us'] #US 
         self.targets = ['NKWCT_res','NKWCNT_res','clearing_YTH','clearing_YNT',  # domestic wage NKPCs + market clearing #targets
-                        'eu_IS_res', 'eu_NKPC_res', 'eu_TR_res', 'UIP_res'] #EU NK residuals + peg conditions
+                        'eu_IS_res', 'eu_NKPC_res', 'eu_TR_res', 'UIP_res', #EU NK residuals + peg conditions
+                        'us_IS_res', 'us_NKPC_res', 'us_TR_res', 'UIP_res_us']
         
         # d. all variables
         self.blocks = [
             'blocks.eu_nk', # closed-economy EU NK block (triangular, no SOE feedback)
+            'blocks.us_nk', # closed-economy US NK block (triangular, no SOE feedback)
             'blocks.mon_pol', # sets the peg E (fixed)
+            'blocks.mon_pol_us',# sets the  E_us (float)
             'blocks.production',
             'blocks.prices',
             'blocks.inflation', 
@@ -75,10 +79,10 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.etaT = 2.0 # elasticity of substitution between tradeable and non-tradeable goods
         
         par.alphaF = 1/3 # share of foreign goods in home tradeable consumption
-#        par.alphaF_us = 1/3 # share of US goods in home tradeable consumption
+        par.alpha_us = 0.5 # share of US goods in home tradeable consumption
 
         par.etaF = 2.0 # elasticity of substitution between home and foreign tradeable goods
-#        par.etaF_us = 2.0 # elasticity of substitution between US and EU tradeable goods
+        par.etaF_us = 2.0 # elasticity of substitution between US and EU tradeable goods
           
         par.varphiTH = np.nan # disutility of labor in tradeable sector (determined in s)
         par.varphiNT = np.nan # disutility of labor in non-tradeable sector (determined in s)
@@ -93,12 +97,14 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.muw = 1.2 # wage mark-up       
  
         # e. foreign Economy
+        par.share_X_us=0.5 #share of DK exports goint to US in SS
         # e1) EU economy
         par.beta_eu = par.beta      # can be set separately
         par.sigma_eu = 1.0          # IS slope (1/intertemporal elasticity)
         par.kappa_eu = 0.05         # NKPC slope
         par.phi_pi_eu = 1.5         # Taylor rule on inflation
         par.phi_x_eu = 0.0          # Taylor rule on output gap
+        
         par.W_eu_ss=1.0             #EU nominal wage in EUR (numeraire)
         par.Y_eu_ss=1.0             #EU outputlevel normalization for reporting
         par.chi_M_eu=1.0            #sensitivity of EU market size to EU activity 
@@ -109,6 +115,24 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         #EU demand for SOE exports (armington)
         par.eta_s = 2.0 # Armington elasticity of foreign demand
         par.M_eu_s_ss = np.nan # size of foreign market (determined in ss)
+
+         # e2) US economy
+        par.beta_us = par.beta      # can be set separately
+        par.sigma_us = 1.0          # IS slope (1/intertemporal elasticity)
+        par.kappa_us = 0.05         # NKPC slope
+        par.phi_pi_us = 1.5         # Taylor rule on inflation
+        par.phi_x_us = 0.0          # Taylor rule on output gap
+        
+        par.W_us_ss=1.0             #EU nominal wage in EUR (numeraire)
+        par.Y_us_ss=1.0             #EU outputlevel normalization for reporting
+        par.chi_M_us=1.0            #sensitivity of US market size to US activity 
+
+        par.rn_us_ss=0.005
+        par.i_us_ss=par.rn_us_ss #zero inflation in SS
+
+        #US demand for SOE exports (armington)
+        par.eta_us_s = 2.0 # Armington elasticity of foreign demand
+        par.M_us_s_ss = np.nan # size of foreign market (determined in ss)
 
         # f. government
         par.tau_ss = 0.30 # tax rate on labor income
@@ -144,6 +168,15 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.jump_i_shock_eu = 0.00
         par.rho_i_shock_eu = 0.00
         par.std_i_shock_eu = 0.00
+
+        # US shocks
+        par.jump_rn_us = 0.00
+        par.rho_rn_us = 0.00
+        par.std_rn_us = 0.00
+
+        par.jump_i_shock_us = 0.00
+        par.rho_i_shock_us = 0.00
+        par.std_i_shock_us = 0.00
 
         # i. misc.
         par.T = 500 # length of path        

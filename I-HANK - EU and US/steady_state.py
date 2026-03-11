@@ -78,19 +78,45 @@ def evaluate_ss(model,do_print=False):
 
     # --- EU production normalizations (needed to avoid NaNs later) ---
     ss.Z_eu = 1.0          # EU productivity (must be > 0)
-    ss.Y_eu = 1.0          # EU output level normalization (choose scale)
+    ss.Y_eu = 1.0          # EU output level normalization
+
+    # US NK steady state
+    ss.x_us = 0.0
+    ss.pi_us = 0.0
+    ss.i_us = par.i_us_ss
+    ss.rn_us = par.rn_us_ss
+    ss.i_shock_us = 0.0
+
+    # US production normalizations
+    ss.Z_us = 1.0
+    ss.Y_us = 1.0
 
     # normalzied to 1
-    for varname in ['PF_eu_s','E', 'PF','PTH','PT','PNT','P','PTH_eu_s','Q']:
+    #for varname in ['PF_eu_s','E', 'PF','PTH','PT','PNT','P','PTH_eu_s','Q']:
+    #    ss.__dict__[varname] = 1.0
+
+    for varname in ['PF_eu_s', 'E','PTH_eu_s','Q', 'PF_eu', #EU
+                'Q_us', 'PF_us_s','E_us','PF_us','PTH_us_s', 'CB_us', #US
+                'PF_TF', 'PTH','PT','PNT','P', #General
+                ]:
         ss.__dict__[varname] = 1.0
     
     # zero inflation
-    for varname in ['pi_F_eu_s','pi_F','pi_TH','pi_T','pi_NT','pi','pi_TH_eu_s','piWTH','piWNT','x_eu','pi_eu']:
+#    for varname in ['pi_F_eu_s','pi_F','pi_TH','pi_T','pi_NT','pi','pi_TH_eu_s','piWTH','piWNT','x_eu','pi_eu']:
+#        ss.__dict__[varname] = 0.0
+    
+    for varname in ['pi_F_eu_s','pi_F_eu','pi_TH_eu_s','x_eu','pi_eu', #EU
+                    'pi_F_us_s','pi_F_us','pi_TH_us_s','x_us','pi_us', #US
+                    'pi_FF','pi_TH','pi_T','pi_NT','pi','piWTH','piWNT' #General
+                    ]:
         ss.__dict__[varname] = 0.0
+    
 
     # real+nominal interest rates are equal to foreign interest rate
     ss.ra = ss.r  = ss.i = ss.rF_eu = par.rn_eu_ss
+    ss.rF_us = par.rn_us_ss #WHY this
     ss.UIP_res = 0.0
+    ss.UIP_res_us = 0.0
     # domestic interes rate shock:
     ss.i_shock = 0.0
 
@@ -98,6 +124,11 @@ def evaluate_ss(model,do_print=False):
     ss.eu_IS_res=0.0
     ss.eu_NKPC_res=0.0
     ss.eu_TR_res=0.0
+
+    #US NK residuals in SS
+    ss.us_IS_res = 0.0
+    ss.us_NKPC_res = 0.0
+    ss.us_TR_res = 0.0
 
     # b. production
 
@@ -132,7 +163,7 @@ def evaluate_ss(model,do_print=False):
         ss.CB = ss.E 
     else:
         ss.CB = ss.i
-
+    ss.CB_us=ss.E_us
     
     # e. consumption
 
@@ -145,26 +176,39 @@ def evaluate_ss(model,do_print=False):
     # home vs. foreign
     ss.CTH = (1-par.alphaF)*ss.CT
     ss.CTF = par.alphaF*ss.CT
+    
+    #SS import split
+    ss.CTF_us = par.alpha_us * ss.CTF
+    ss.CTF_eu = (1-par.alpha_us) * ss.CTF
 
     # --- EU exports/consumption and production objects in SS ---
     #ss.X_eu_to_dk = ss.CTF              # EU exports to DK equal DK imports (foreign good)
     #ss.C_eu = ss.Y_eu - ss.X_eu_to_dk   # EU consumes the residual
     ss.N_eu = ss.Y_eu / ss.Z_eu         # production: Y = Z*N
+    ss.N_us = ss.Y_us / ss.Z_us
 
     # EU real marginal cost (if your EU NKPC uses mc_eu)
     # Requires par.W_eu_ss in IHANKModel.setup(), e.g. par.W_eu_ss = 1.0
     ss.mc_eu = (par.W_eu_ss / ss.Z_eu) / ss.PF_eu_s
+    ss.mc_us = (par.W_us_ss / ss.Z_us) / ss.PF_us_s
 
     # size of foreign market
-    # SOE exports to EU clear TH market in SS
-    ss.CTH_eu_s = ss.YTH - ss.CTH
+    # Total exports of DK tradable good
+    X_tot = ss.YTH - ss.CTH
 
-    # Set the steady-state level of EU market size
-    ss.M_eu_s = ss.CTH_eu_s   # because PTH_eu_s = PF_eu_s = 1 in SS
+    # Split across EU and US
+    ss.CTH_eu_s = (1-par.share_X_us) * X_tot
+    ss.CTH_us_s = par.share_X_us * X_tot
+
+    # Market sizes (relative prices normalized to 1 in SS)
+    ss.M_eu_s = ss.CTH_eu_s
+    ss.M_us_s = ss.CTH_us_s
+
     par.M_eu_s_ss = ss.M_eu_s
+    par.M_us_s_ss = ss.M_us_s
 
     # f. market clearing
-    ss.clearing_YTH = ss.YTH - ss.CTH - ss.CTH_eu_s 
+    ss.clearing_YTH = ss.YTH - ss.CTH - ss.CTH_eu_s - ss.CTH_us_s 
     ss.clearing_YNT = ss.YNT - ss.CNT - ss.G
 
     # zero net foreign assets
@@ -205,7 +249,10 @@ def find_ss(model, do_print=False):
         print(f'{par.varphiTH = :.3f}')
         print(f'{par.varphiNT = :.3f}')
         print(f'{ss.M_eu_s = :.3f}')
+        print(f'{ss.M_us_s = :.3f}')
         print(f'{ss.clearing_YTH = :12.8f}')
         print(f'{ss.clearing_YNT = :12.8f}')
         print(f'{ss.G = :.3f}')
         print(f'{ss.NFA = :.3f}')
+        print(f'{ss.CB = :.3f}')
+        print(f'{ss.CB_us = :.3f}')
