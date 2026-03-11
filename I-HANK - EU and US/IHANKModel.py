@@ -30,7 +30,8 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.shocks = ['ZTH','ZNT', #domestic TFPs
                        'beta','G', #Domestic preference and fiscal shocks
                        'i_shock', #domestic monetary shock (keep at zero under peg)
-                       'rn_eu','i_shock_eu', 'Z_eu'] # EU natural-rate, monetary shocks and foreign TFP
+                       'rn_eu','i_shock_eu', 'Z_eu' # EU natural-rate, monetary shocks and foreign TFP
+                       ] #
         self.unknowns = ['CB','NNT','NTH','piWTH','piWNT', #original # endogenous inputs
                          'x_eu', 'pi_eu', 'i_eu'] #new
         self.targets = ['NKWCT_res','NKWCNT_res','clearing_YTH','clearing_YNT',  # domestic wage NKPCs + market clearing #targets
