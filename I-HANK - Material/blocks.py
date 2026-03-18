@@ -36,7 +36,7 @@ def eu_nk(par, ini, ss,
           rn_eu, i_shock_eu, Z_eu,
           x_eu, pi_eu, i_eu,
           PF_eu_s, rF_eu, M_eu_s,   # <-- ADD M_eu_s here
-          mc_eu,
+          Y_eu, N_eu, mc_eu,
           eu_IS_res, eu_NKPC_res, eu_TR_res):
     """Closed simple EU NK block (log-linear in x and pi), producing PF_eu_s (EU price level).
 
@@ -81,8 +81,8 @@ def eu_nk(par, ini, ss,
 
     # Optional accounting: EU exports and absorption
     #X_eu_to_dk[:] = CTF
-    #Y_eu[:] = ss.Y_eu * (1.0 + x_eu)
-    #N_eu[:] = Y_eu / Z_eu
+    Y_eu[:] = ss.Y_eu * (1.0 + x_eu)
+    N_eu[:] = Y_eu / Z_eu
     #C_eu[:] = Y_eu - X_eu_to_dk
 
 @nb.njit
@@ -90,7 +90,7 @@ def us_nk(par, ini, ss,
           rn_us, i_shock_us, Z_us,
           x_us, pi_us, i_us,
           PF_us_s, rF_us, M_us_s,
-          mc_us,
+          Y_us, N_us, mc_us,
           us_IS_res, us_NKPC_res, us_TR_res):
     """Closed simple EU NK block (log-linear in x and pi), producing PF_us_s (US price level).
     """
@@ -124,8 +124,8 @@ def us_nk(par, ini, ss,
     M_us_s[:] = ss.M_us_s * np.exp(par.chi_M_us * x_us)
 
     # accounting
-    #Y_us[:] = ss.Y_us * (1.0 + x_us)
-    #N_us[:] = Y_us / Z_us
+    Y_us[:] = ss.Y_us * (1.0 + x_us)
+    N_us[:] = Y_us / Z_us
 
 @nb.njit
 def mon_pol(par,ini,ss,E,CB):
@@ -141,21 +141,61 @@ def mon_pol_us(par,ini,ss, E_us, CB_us):
     E_us[:]=CB_us
 
 @nb.njit
-def production(par,ini,ss,
-               ZTH,ZNT,NTH,NNT,piWTH,piWNT,
-               YTH,YNT,WTH,WNT,PTH,PNT):
+def materials_prices(par, ini, ss,
+                     PF_eu_s, PF_us_s, E, E_us,
+                     PM_eu, PM_us, PM):
+    """
+    Separate materials prices in DKK (distinct objects from household import prices).
+    Later tariffs will enter naturally as wedges here.
+    """
+
+    # materials prices in DKK
+    PM_eu[:] = PF_eu_s * E
+    PM_us[:] = PF_us_s * E_us
+
+    # composite materials price index (inner CES)
+    PM[:] = price_index(PM_us, PM_eu, par.eta_M, par.alpha_M_us)
+
+
+@nb.njit
+def production(par, ini, ss,
+               ZTH, ZNT, NTH, NNT, M_TH, PM, piWTH, piWNT,
+               YTH, YNT, WTH, WNT, PTH, PNT, MC_TH):
     
-    # a. production
-    YTH[:] = ZTH*NTH
-    YNT[:] = ZNT*NNT
     
-    # b. wages
+    # wages from wage inflation
     price_from_inflation(WTH,piWTH,par.T,ss.WTH)
     price_from_inflation(WNT,piWNT,par.T,ss.WNT)
 
-    # c. price = marginal cost
-    PTH[:] = WTH/ZTH
+    # Non-tradable production (the same)
+    YNT[:] = ZNT*NNT
     PNT[:] = WNT/ZNT
+
+    # Tradable production: outer CES labor vs materials
+    rho = (par.eta_VA - 1.0) / par.eta_VA
+
+    # quantity production
+    # YTH = ZTH * [ (1-beta) N^rho + beta M^rho ]^(1/rho)
+    inside = (1.0 - par.beta_M) * (NTH ** rho) + par.beta_M * (M_TH ** rho)
+    YTH[:] = ZTH * (inside ** (1.0 / rho))
+
+    # --- Unit cost / marginal cost (perfect competition => PTH=MC_TH) ---
+    # MC = (1/Z) * [ (1-beta) W^(1-eta) + beta PM^(1-eta) ]^(1/(1-eta))
+    pow_ = 1.0 - par.eta_VA
+    MC_TH[:] = (1.0 / ZTH) * (((1.0 - par.beta_M) * (WTH ** pow_) + par.beta_M * (PM ** pow_)) ** (1.0 / pow_))
+    PTH[:] = MC_TH
+
+@nb.njit
+def FOC_M_TH(par, ini, ss,
+             NTH, M_TH, WTH, PM,
+             FOC_M_TH_res):
+    """
+    Cost-minimizing condition between labor and materials for given output:
+    M/N = (beta/(1-beta)) * (W/PM)^{eta_VA}
+    """
+
+    ratio = (par.beta_M / (1.0 - par.beta_M)) * (WTH / PM) ** (par.eta_VA)
+    FOC_M_TH_res[:] = M_TH - NTH * ratio
 
 @nb.njit
 def prices(par,ini,ss,

@@ -78,7 +78,7 @@ def evaluate_ss(model,do_print=False):
 
     # --- EU production normalizations (needed to avoid NaNs later) ---
     ss.Z_eu = 1.0          # EU productivity (must be > 0)
-    #ss.Y_eu = 1.0          # EU output level normalization
+    ss.Y_eu = 1.0          # EU output level normalization
 
     # US NK steady state
     ss.x_us = 0.0
@@ -89,7 +89,7 @@ def evaluate_ss(model,do_print=False):
 
     # US production normalizations
     ss.Z_us = 1.0
-    #ss.Y_us = 1.0
+    ss.Y_us = 1.0
 
     # normalzied to 1
     #for varname in ['PF_eu_s','E', 'PF','PTH','PT','PNT','P','PTH_eu_s','Q']:
@@ -98,6 +98,7 @@ def evaluate_ss(model,do_print=False):
     for varname in ['PF_eu_s', 'E','PTH_eu_s','Q', 'PF_eu', #EU
                 'Q_us', 'PF_us_s','E_us','PF_us','PTH_us_s', 'CB_us', #US
                 'PF_TF', 'PTH','PT','PNT','P', #General
+                'PM_eu', 'PM_us', 'PM', 'MC_TH' #Materials
                 ]:
         ss.__dict__[varname] = 1.0
     
@@ -137,14 +138,42 @@ def evaluate_ss(model,do_print=False):
     ss.ZNT = 1.0
     ss.NTH = 1.0*par.sT
     ss.NNT = 1.0*(1-par.sT)
-    
-    # production
-    ss.YTH = ss.ZTH*ss.NTH
-    ss.YNT = ss.ZNT*ss.NNT
 
-    # real = nominal wages = value of mpl
-    ss.wTH = ss.WTH = ss.PTH*ss.ZTH
-    ss.wNT = ss.WNT = ss.PNT*ss.ZNT
+    ss.WTH=1.0
+    ss.WNT=1.0
+
+    # implied materials quantity from FOC at SS prices
+    ss.M_TH = ss.NTH * (par.beta_M / (1.0 - par.beta_M))  # since WTH=PM=1
+
+    # implied tradable output from CES production
+    rho = (par.eta_VA - 1.0) / par.eta_VA
+    inside = (1.0 - par.beta_M) * (ss.NTH ** rho) + par.beta_M * (ss.M_TH ** rho)
+    ss.YTH = ss.ZTH * (inside ** (1.0 / rho))
+
+    # unit cost / price of tradables in SS
+    ss.MC_TH = (1.0 / ss.ZTH) * (((1.0 - par.beta_M) * (ss.WTH ** (1.0 - par.eta_VA)) + par.beta_M * (ss.PM ** (1.0 - par.eta_VA))) ** (1.0 / (1.0 - par.eta_VA)))
+    ss.PTH = ss.MC_TH
+
+    # non-tradable output
+    ss.YNT = ss.ZNT * ss.NNT
+
+    # unit cost in SS (given WTH=1, PM=1, ZTH=1)
+    pow_ = 1.0 - par.eta_VA
+    ss.MC_TH = (1.0 / ss.ZTH) * (((1.0 - par.beta_M) * (ss.WTH ** pow_) +
+                              par.beta_M * (ss.PM ** pow_)) ** (1.0 / pow_))
+
+    # perfect competition: PTH = MC_TH
+    ss.PTH = ss.MC_TH
+
+    # real wages (since P=1)
+    ss.wTH = ss.WTH / ss.P
+    ss.wNT = ss.WNT / ss.P
+
+    # price of non-tradable consistent with wage and productivity
+    ss.PNT = ss.WNT / ss.ZNT
+
+    # FOC residual zero by construction
+    ss.FOC_M_TH_res = 0.0
     
     # c. household 
     ss.tau = par.tau_ss
@@ -184,8 +213,8 @@ def evaluate_ss(model,do_print=False):
     # --- EU exports/consumption and production objects in SS ---
     #ss.X_eu_to_dk = ss.CTF              # EU exports to DK equal DK imports (foreign good)
     #ss.C_eu = ss.Y_eu - ss.X_eu_to_dk   # EU consumes the residual
-    #ss.N_eu = ss.Y_eu / ss.Z_eu         # production: Y = Z*N
-    #ss.N_us = ss.Y_us / ss.Z_us
+    ss.N_eu = ss.Y_eu / ss.Z_eu         # production: Y = Z*N
+    ss.N_us = ss.Y_us / ss.Z_us
 
     # EU real marginal cost (if your EU NKPC uses mc_eu)
     # Requires par.W_eu_ss in IHANKModel.setup(), e.g. par.W_eu_ss = 1.0
