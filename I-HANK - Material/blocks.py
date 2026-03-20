@@ -32,11 +32,50 @@ def price_from_inflation(P,pi,T,iniP):
 ## Blocks ##
 ############
 @nb.njit
+def mon_pol(par,ini,ss,E,CB, E_us, CB_us):
+
+    if par.float == True:
+        E[:] = CB 
+    else:
+        E[:] = ss.E
+    E_us[:]=CB_us
+
+@nb.njit
+def materials_prices(par, ini, ss,
+                   pi_eu, pi_us, E, E_us,
+                   PF_eu_s, PF_us_s,
+                   PM_eu, PM_us, PM,
+                   PM_eu_eu, PM_eu_us, PM_eu_bundle,
+                   PM_us_eu, PM_us_us, PM_us_bundle
+                   ):
+
+    # foreign final-goods prices in own currency
+    price_from_inflation(PF_eu_s, pi_eu, par.T, ss.PF_eu_s)
+    price_from_inflation(PF_us_s, pi_us, par.T, ss.PF_us_s)
+
+    # Danish materials prices in DKK
+    PM_eu[:] = PF_eu_s * E
+    PM_us[:] = PF_us_s * E_us
+    PM[:] = price_index(PM_us, PM_eu, par.eta_I, par.alpha_I_us)
+
+    # EU materials bundle prices in EUR
+    PM_eu_eu[:] = PF_eu_s
+    PM_eu_us[:] = PF_us_s * E_us / E
+    PM_eu_bundle[:] = price_index(PM_eu_us, PM_eu_eu, par.eta_I_eu, par.alpha_I_eu_us)
+
+    # US materials bundle prices in USD
+    PM_us_eu[:] = PF_eu_s * E / E_us
+    PM_us_us[:] = PF_us_s
+    PM_us_bundle[:] = price_index(PM_us_eu, PM_us_us, par.eta_I_us, par.alpha_I_us_eu)
+
+@nb.njit
 def eu_nk(par, ini, ss,
           Z_eu, i_shock_eu,
-          Y_eu, C_eu, N_eu, pi_eu, i_eu,
-          PF_eu_s, rF_eu, M_eu_s, mc_eu, W_eu,
-          eu_Euler_res, eu_LS_res, eu_NKPC_res, eu_TR_res, eu_RC_res):
+          C_eu, N_eu, pi_eu, i_eu, M_eu,
+          PF_eu_s, rF_eu, M_eu_s, W_eu, Y_eu, mc_eu,
+          PM_eu_bundle,
+          eu_Euler_res, eu_LS_res, eu_NKPC_res, eu_TR_res, eu_RC_res,
+          FOC_I_eu_res):
 
     # Forward-looking objects
     C_eu_plus = lead(C_eu, ss.C_eu)
@@ -49,109 +88,122 @@ def eu_nk(par, ini, ss,
     rF_eu[:] = (1.0 + i_eu) / (1.0 + pi_eu_plus) - 1.0
 
     # Output and wage
-    Y_eu[:] = Z_eu * N_eu
-    #N_eu[:]=Y_eu/Z_eu
-    
-    # wage implied by marginal cost
-    w_eu = mc_eu * Z_eu
-    W_eu[:] = PF_eu_s * w_eu
+    W_eu[:] = PF_eu_s
+
+    # production
+    rho = (par.eta_VA_eu - 1.0) / par.eta_VA_eu
+    inside = (1.0 - par.beta_I_eu) * (N_eu ** rho) + par.beta_I_eu * (M_eu ** rho)
+    Y_eu[:] = Z_eu * (inside ** (1.0 / rho))
+
+    # marginal cost / unit cost
+    pow_ = 1.0 - par.eta_VA_eu
+    mc_eu[:] = (1.0 / Z_eu) * (
+        ((1.0 - par.beta_I_eu) * (W_eu ** pow_) + par.beta_I_eu * (PM_eu_bundle ** pow_)) ** (1.0 / pow_)
+    )
 
     # Euler equation
     eu_Euler_res[:] = C_eu**(-par.sigma_eu) - par.beta_eu * (1.0 + rF_eu) * C_eu_plus**(-par.sigma_eu)
 
-    # Labor supply
-    eu_LS_res[:] = par.varphi_eu * N_eu**(par.nu_eu) - w_eu * C_eu**(-par.sigma_eu)
+    # labor supply (real wage in EUR terms)
+    eu_LS_res[:] = par.varphi_eu * N_eu**par.nu_eu - (W_eu / PF_eu_s) * C_eu**(-par.sigma_eu)
 
-    # resource constraint
+    # intermediate demands by source
+    #M_th_eu = (1.0 - par.alpha_I_us) * (PM_eu / PM) ** (-par.eta_I) * I_TH
+    #M_us_eu = par.alpha_I_us_eu * (PM_us_eu / PM_us_bundle) ** (-par.eta_I_us) * M_us
+
+    # foreign resource constraint
     eu_RC_res[:] = Y_eu - C_eu
 
     # NKPC
     eu_NKPC_res[:] = pi_eu - (par.beta_eu * pi_eu_plus + par.kappa_eu * (mc_eu - 1.0))
 
     # Taylor rule
-    eu_TR_res[:] = i_eu - (ss.i_eu
-                           + par.phi_pi_eu * (pi_eu - ss.pi_eu)
-                           + i_shock_eu)
+    eu_TR_res[:] = i_eu - (ss.i_eu + par.phi_pi_eu * (pi_eu - ss.pi_eu) + i_shock_eu)
 
-    # Resource-based market size for Danish exports
+    # reduced-form demand for Danish exports
     M_eu_s[:] = ss.M_eu_s * (C_eu / ss.C_eu)
 
+    ratio = (par.beta_I_eu / (1.0 - par.beta_I_eu)) * (W_eu / PM_eu_bundle) ** par.eta_VA_eu
+    FOC_I_eu_res[:] = M_eu - N_eu * ratio
 
 
 @nb.njit
 def us_nk(par, ini, ss,
           Z_us, i_shock_us,
-          Y_us, C_us, N_us, pi_us, i_us,
-          PF_us_s, rF_us, M_us_s, mc_us, W_us,
-          us_Euler_res, us_LS_res, us_NKPC_res, us_TR_res, us_RC_res):
+          C_us, N_us, pi_us, i_us, M_us,
+          PF_us_s, rF_us, M_us_s, W_us, Y_us, mc_us,
+          PM_us_bundle,
+          us_Euler_res, us_LS_res, us_NKPC_res, us_TR_res, us_RC_res,
+          FOC_I_us_res):
 
-    # Forward-looking objects
     C_us_plus = lead(C_us, ss.C_us)
     pi_us_plus = lead(pi_us, ss.pi_us)
 
-    # US price level in USD
-    price_from_inflation(PF_us_s, pi_us, par.T, ss.PF_us_s)
-
-    # Fisher equation
+    # Fisher
     rF_us[:] = (1.0 + i_us) / (1.0 + pi_us_plus) - 1.0
 
-    # Output and wage
-    Y_us[:] = Z_us * N_us
-    #N_us[:]=Y_us/Z_us
-    
-    # wage implied by marginal cost
-    w_us = mc_us * Z_us
-    W_us[:] = PF_us_s * w_us
+    # wage in USD
+    W_us[:] = PF_us_s
 
-    # Euler equation
+    # production
+    rho = (par.eta_VA_us - 1.0) / par.eta_VA_us
+    inside = (1.0 - par.beta_I_us) * (N_us ** rho) + par.beta_I_us * (M_us ** rho)
+    Y_us[:] = Z_us * (inside ** (1.0 / rho))
+
+    # marginal cost / unit cost
+    pow_ = 1.0 - par.eta_VA_us
+    mc_us[:] = (1.0 / Z_us) * (
+        ((1.0 - par.beta_I_us) * (W_us ** pow_) + par.beta_I_us * (PM_us_bundle ** pow_)) ** (1.0 / pow_)
+    )
+
+    # Euler
     us_Euler_res[:] = C_us**(-par.sigma_us) - par.beta_us * (1.0 + rF_us) * C_us_plus**(-par.sigma_us)
 
-    # Labor supply
-    us_LS_res[:] = par.varphi_us * N_us**(par.nu_us) - w_us * C_us**(-par.sigma_us)
+    # labor supply
+    us_LS_res[:] = par.varphi_us * N_us**par.nu_us - (W_us / PF_us_s) * C_us**(-par.sigma_us)
 
-    # resource constraint
+    # intermediate demands by source
+    #M_th_us = par.alpha_I_us * (PM_us / PM) ** (-par.eta_I) * I_TH
+    #M_eu_us = par.alpha_I_eu_us * (PM_eu_us / PM_eu_bundle) ** (-par.eta_I_eu) * M_eu
+
+    # foreign resource constraint
     us_RC_res[:] = Y_us - C_us
 
     # NKPC
     us_NKPC_res[:] = pi_us - (par.beta_us * pi_us_plus + par.kappa_us * (mc_us - 1.0))
 
     # Taylor rule
-    us_TR_res[:] = i_us - (ss.i_us
-                           + par.phi_pi_us * (pi_us - ss.pi_us)
-                           + i_shock_us)
+    us_TR_res[:] = i_us - (ss.i_us + par.phi_pi_us * (pi_us - ss.pi_us) + i_shock_us)
 
-    # Resource-based market size for Danish exports
+    # reduced-form demand for Danish exports
     M_us_s[:] = ss.M_us_s * (C_us / ss.C_us)
 
-@nb.njit
-def mon_pol(par,ini,ss,E,CB, E_us, CB_us):
+    ratio = (par.beta_I_us / (1.0 - par.beta_I_us)) * (W_us / PM_us_bundle) ** par.eta_VA_us
+    FOC_I_us_res[:] = M_us - N_us * ratio
+    
 
-    if par.float == True:
-        E[:] = CB 
-    else:
-        E[:] = ss.E
-    E_us[:]=CB_us
 
-@nb.njit
-def materials_prices(par, ini, ss,
-                     PF_eu_s, PF_us_s, E, E_us,
-                     PM_eu, PM_us, PM):
+
+#@nb.njit
+#def materials_prices(par, ini, ss,
+#                     PF_eu_s, PF_us_s, E, E_us,
+#                     PM_eu, PM_us, PM):
     """
     Separate materials prices in DKK (distinct objects from household import prices).
     Later tariffs will enter naturally as wedges here.
     """
 
     # materials prices in DKK
-    PM_eu[:] = PF_eu_s * E
-    PM_us[:] = PF_us_s * E_us
+#    PM_eu[:] = PF_eu_s * E
+#    PM_us[:] = PF_us_s * E_us
 
     # composite materials price index (inner CES)
-    PM[:] = price_index(PM_us, PM_eu, par.eta_I, par.alpha_I_us)
+#    PM[:] = price_index(PM_us, PM_eu, par.eta_I, par.alpha_I_us)
 
 
 @nb.njit
 def production(par, ini, ss,
-               ZTH, ZNT, NTH, NNT, M_TH, PM, piWTH, piWNT,
+               ZTH, ZNT, NTH, NNT, I_TH, PM, piWTH, piWNT,
                YTH, YNT, WTH, WNT, PTH, PNT, MC_TH):
     
     
@@ -168,7 +220,7 @@ def production(par, ini, ss,
 
     # quantity production
     # YTH = ZTH * [ (1-beta) N^rho + beta M^rho ]^(1/rho)
-    inside = (1.0 - par.beta_I) * (NTH ** rho) + par.beta_I * (M_TH ** rho)
+    inside = (1.0 - par.beta_I) * (NTH ** rho) + par.beta_I * (I_TH ** rho)
     YTH[:] = ZTH * (inside ** (1.0 / rho))
 
     # --- Unit cost / marginal cost (perfect competition => PTH=MC_TH) ---
@@ -179,7 +231,7 @@ def production(par, ini, ss,
 
 @nb.njit
 def FOC_I_TH(par, ini, ss,
-             NTH, M_TH, WTH, PM,
+             NTH, I_TH, WTH, PM,
              FOC_I_TH_res):
     """
     Cost-minimizing condition between labor and materials for given output:
@@ -187,7 +239,7 @@ def FOC_I_TH(par, ini, ss,
     """
 
     ratio = (par.beta_I / (1.0 - par.beta_I)) * (WTH / PM) ** (par.eta_VA)
-    FOC_I_TH_res[:] = M_TH - NTH * ratio
+    FOC_I_TH_res[:] = I_TH - NTH * ratio
 
 @nb.njit
 def prices(par,ini,ss,

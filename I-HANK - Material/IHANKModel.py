@@ -33,20 +33,20 @@ class IHANKModelClass(EconModelClass,GEModelClass):
                        'i_shock_eu', 'Z_eu', # EU monetary shocks and foreign TFP
                        'i_shock_us', 'Z_us'] # US monetary shocks and foreign TFP
         self.unknowns = ['CB','NNT','NTH','piWTH','piWNT', 'CB_us', #original # endogenous inputs
-                         'C_eu', 'N_eu', 'pi_eu', 'i_eu', 'mc_eu', #EU
-                         'C_us', 'N_us', 'pi_us', 'i_us', 'mc_us', #US
-                         'M_TH'] #Materials 
+                         'C_eu', 'N_eu', 'pi_eu', 'i_eu', 'M_eu', #EU
+                         'C_us', 'N_us', 'pi_us', 'i_us', 'M_us', #US
+                         'I_TH'] #Materials 
         self.targets = ['NKWCT_res','NKWCNT_res','clearing_YTH','clearing_YNT',  # domestic wage NKPCs + market clearing #targets
                         'eu_Euler_res', 'eu_NKPC_res', 'eu_TR_res', 'eu_LS_res', 'eu_RC_res', 'UIP_res', #EU NK residuals + peg conditions
                         'us_Euler_res', 'us_NKPC_res', 'us_TR_res', 'us_LS_res', 'us_RC_res', 'UIP_res_us', #US NK residuals
-                        'FOC_I_TH_res'] #Materials
+                        'FOC_I_TH_res','FOC_I_eu_res','FOC_I_us_res'] #Materials
         
         # d. all variables
         self.blocks = [
-            'blocks.eu_nk', # closed-economy EU NK block (triangular, no SOE feedback)
-            'blocks.us_nk', # closed-economy US NK block (triangular, no SOE feedback)
             'blocks.mon_pol', # sets the peg E (fixed)
             'blocks.materials_prices', #finds price materials
+            'blocks.eu_nk', # closed-economy EU NK block (triangular, no SOE feedback)
+            'blocks.us_nk', # closed-economy US NK block (triangular, no SOE feedback)
             'blocks.production',
             'blocks.FOC_I_TH', #sets FOC for materials
             'blocks.prices',
@@ -142,6 +142,18 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         par.alpha_I_us = 0.50    # US share inside materials bundle
         par.eta_I = 0.30         # elasticity US vs EU materials (inner, LOW)
+
+        # EU production
+        par.beta_I_eu = par.beta_I
+        par.eta_VA_eu = par.eta_VA
+        par.alpha_I_eu_us = 0.50
+        par.eta_I_eu = par.eta_I
+
+        # US production
+        par.beta_I_us = par.beta_I
+        par.eta_VA_us = par.eta_VA
+        par.alpha_I_us_eu = 0.50
+        par.eta_I_us = par.eta_I
 
         # g. government
         par.tau_ss = 0.30 # tax rate on labor income
