@@ -344,7 +344,7 @@ def consumption(par,ini,ss,
 
     # d. foreign demand for DK tradables (exports)
     CTH_eu_s[:] = (PTH_eu_s/PF_eu_s)**(-par.eta_s)*M_eu_s
-    CTH_us_s[:] = (PTH_us_s/PF_us_s)**(-par.eta_us_s)*M_us_s
+    CTH_us_s[:] = (PTH_us_s/PF_us_s)**(-par.eta_s)*M_us_s
 
 @nb.njit
 def market_clearing(par,ini,ss,
