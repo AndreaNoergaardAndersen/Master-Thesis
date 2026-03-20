@@ -162,19 +162,11 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.std_i_shock = 0.00 # std.
 
         # EU shocks
-        par.jump_rn_eu = 0.00
-        par.rho_rn_eu = 0.00
-        par.std_rn_eu = 0.00
-
         par.jump_i_shock_eu = 0.00
         par.rho_i_shock_eu = 0.00
         par.std_i_shock_eu = 0.00
 
         # US shocks
-        par.jump_rn_us = 0.00
-        par.rho_rn_us = 0.00
-        par.std_rn_us = 0.00
-
         par.jump_i_shock_us = 0.00
         par.rho_i_shock_us = 0.00
         par.std_i_shock_us = 0.00
