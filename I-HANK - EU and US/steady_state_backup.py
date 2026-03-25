@@ -78,11 +78,11 @@ def evaluate_ss(model,do_print=False):
     ss.PF_eu_s = 1.0
     ss.rF_eu = par.i_eu_ss
     
-    #ss.Y_eu = ss.Z_eu * ss.N_eu
+    ss.Y_eu = ss.Z_eu * ss.N_eu
 
-    #par.varphi_eu = ss.Z_eu / (ss.N_eu**par.nu_eu * ss.C_eu**par.sigma_eu)
+    par.varphi_eu = ss.Z_eu / (ss.N_eu**par.nu_eu * ss.C_eu**par.sigma_eu)
 
-    #ss.W_eu = ss.PF_eu_s*ss.Z_eu
+    ss.W_eu = ss.PF_eu_s*ss.Z_eu
     
 
     
@@ -120,21 +120,21 @@ def evaluate_ss(model,do_print=False):
     ss.i_shock_us = 0.0
 
     # normalzied to 1
-#    for varname in ['PF_eu_s', 'E','PTH_eu_s','Q', 'PF_eu', #EU
-#                'Q_us', 'PF_us_s','E_us','PF_us','PTH_us_s', 'CB_us', #US
-#                'PF_TF', 'PTH','PT','PNT','P', #General
-#                ]:
-#        ss.__dict__[varname] = 1.0
-    for varname in ['PF_eu_s', 'E','PTH_eu_s','Q', 'PF_eu', 'PM_eu_eu', #EU
-                'Q_us', 'PF_us_s','E_us','PF_us','PTH_us_s', 'CB_us', 'PM_us_us', #US
+    #for varname in ['PF_eu_s','E', 'PF','PTH','PT','PNT','P','PTH_eu_s','Q']:
+    #    ss.__dict__[varname] = 1.0
+
+    for varname in ['PF_eu_s', 'E','PTH_eu_s','Q', 'PF_eu', #EU
+                'Q_us', 'PF_us_s','E_us','PF_us','PTH_us_s', 'CB_us', #US
                 'PF_TF', 'PTH','PT','PNT','P', #General
-                'PM_eu_eu','PM_eu_us','PM_eu','M_eu','M_eu_eu','M_eu_us'
                 ]:
         ss.__dict__[varname] = 1.0
     
     # zero inflation
-    for varname in ['pi_F_eu_s','pi_F_eu','pi_TH_eu_s','pi_eu', 'piM_eu_eu', #EU
-                    'pi_F_us_s','pi_F_us','pi_TH_us_s','pi_us', 'piM_us_us', #US
+#    for varname in ['pi_F_eu_s','pi_F','pi_TH','pi_T','pi_NT','pi','pi_TH_eu_s','piWTH','piWNT','x_eu','pi_eu']:
+#        ss.__dict__[varname] = 0.0
+    
+    for varname in ['pi_F_eu_s','pi_F_eu','pi_TH_eu_s','pi_eu', #EU
+                    'pi_F_us_s','pi_F_us','pi_TH_us_s','pi_us', #US
                     'pi_FF','pi_TH','pi_T','pi_NT','pi','piWTH','piWNT' #General
                     ]:
         ss.__dict__[varname] = 0.0
@@ -147,18 +147,6 @@ def evaluate_ss(model,do_print=False):
     ss.UIP_res_us = 0.0
     # domestic interes rate shock:
     ss.i_shock = 0.0
-
-    # EU materials steady state (nested CES in production)
-    ss.PM_eu_us = ss.PM_us_us * ss.E_us / ss.E
-    ss.PM_eu = blocks.price_index(ss.PM_eu_us, ss.PM_eu_eu, par.eta_M_eu, par.alpha_M_eu_us)
-    ss.W_eu = ss.PF_eu_s
-    ss.M_eu = ss.N_eu * (par.beta_M_eu / (1.0 - par.beta_M_eu)) * ((ss.W_eu/ss.PF_eu_s) / (ss.PM_eu/ss.PF_eu_s))**par.eta_VA_eu
-    ss.M_eu_us = par.alpha_M_eu_us * (ss.PM_eu_us / ss.PM_eu)**(-par.eta_M_eu) * ss.M_eu
-    ss.M_eu_eu = (1.0 - par.alpha_M_eu_us) * (ss.PM_eu_eu / ss.PM_eu)**(-par.eta_M_eu) * ss.M_eu
-    rho_eu = (par.eta_VA_eu - 1.0) / par.eta_VA_eu
-    ss.Y_eu = ss.Z_eu * (((1.0 - par.beta_M_eu) * ss.N_eu**rho_eu + par.beta_M_eu * ss.M_eu**rho_eu) ** (1.0 / rho_eu))
-    ss.C_eu = ss.Y_eu - (ss.PM_eu / ss.PF_eu_s) * ss.M_eu
-    par.varphi_eu = (ss.W_eu / ss.PF_eu_s) * ss.C_eu**(-par.sigma_eu) / (ss.N_eu**par.nu_eu)
 
     # b. production
 

@@ -32,43 +32,12 @@ def price_from_inflation(P,pi,T,iniP):
 ## Blocks ##
 ############
 @nb.njit
-def mon_pol(par,ini,ss,E,CB, E_us, CB_us):
-
-    if par.float == True:
-        E[:] = CB 
-    else:
-        E[:] = ss.E
-    E_us[:]=CB_us
-
-@nb.njit
-def material_prices(par, ini, ss,
-                       piM_eu_eu, piM_us_us,
-                       E, E_us,
-                       PM_eu_eu, PM_us_us, PM_eu_us, PM_eu):
-    """
-    Separate material-input prices for the EU production block.
-    """
-
-    # EU-sourced material price in EUR
-    price_from_inflation(PM_eu_eu, piM_eu_eu, par.T, ss.PM_eu_eu)
-
-    # US-sourced material price in USD
-    price_from_inflation(PM_us_us, piM_us_us, par.T, ss.PM_us_us)
-
-    # convert to EUR
-    PM_eu_us[:] = PM_us_us * E_us / E
-
-    # inner CES price index
-    PM_eu[:] = price_index(PM_eu_us, PM_eu_eu, par.eta_M_eu, par.alpha_M_eu_us)
-
-@nb.njit
 def eu_nk(par, ini, ss,
           Z_eu, i_shock_eu,
           Y_eu, C_eu, N_eu, pi_eu, i_eu,
           PF_eu_s, rF_eu, M_eu_s, mc_eu, W_eu,
-          PM_eu_eu, PM_eu_us, PM_eu, M_eu, M_eu_eu, M_eu_us,
           eu_Euler_res, eu_LS_res, eu_NKPC_res, eu_TR_res, eu_RC_res):
-    
+
     # Forward-looking objects
     C_eu_plus = lead(C_eu, ss.C_eu)
     pi_eu_plus = lead(pi_eu, ss.pi_eu)
@@ -79,26 +48,9 @@ def eu_nk(par, ini, ss,
     # Fisher equation
     rF_eu[:] = (1.0 + i_eu) / (1.0 + pi_eu_plus) - 1.0
 
-    #PRODUCTION
-    # Wage implied by marginal cost under outer CES unit-cost function
-    pow_ = 1.0 - par.eta_VA_eu
-    rhs = ((mc_eu * Z_eu) ** pow_ - par.beta_M_eu * (PM_eu ** pow_)) / (1.0 - par.beta_M_eu)
-    #rhs = np.maximum(rhs, 1e-12)
-    w_eu = rhs ** (1.0 / pow_)
-    W_eu[:] = PF_eu_s * w_eu
-
-    # Static cost-minimizing material demand from outer CES
-    ratio_MN = (par.beta_M_eu / (1.0 - par.beta_M_eu)) * (w_eu / PM_eu) ** par.eta_VA_eu
-    M_eu[:] = N_eu * ratio_MN
-
-    # Inner CES allocation between EU and US materials
-    M_eu_us[:] = par.alpha_M_eu_us * (PM_eu_us / PM_eu) ** (-par.eta_M_eu) * M_eu
-    M_eu_eu[:] = (1.0 - par.alpha_M_eu_us) * (PM_eu_eu / PM_eu) ** (-par.eta_M_eu) * M_eu
-
-    # Output from outer CES production function
-    rho = (par.eta_VA_eu - 1.0) / par.eta_VA_eu
-    inside = (1.0 - par.beta_M_eu) * (N_eu ** rho) + par.beta_M_eu * (M_eu ** rho)
-    Y_eu[:] = Z_eu * (inside ** (1.0 / rho))
+    # Output and wage
+    Y_eu[:] = Z_eu * N_eu
+    #N_eu[:]=Y_eu/Z_eu
     
     # wage implied by marginal cost
     w_eu = mc_eu * Z_eu
@@ -110,8 +62,8 @@ def eu_nk(par, ini, ss,
     # Labor supply
     eu_LS_res[:] = par.varphi_eu * N_eu**(par.nu_eu) - w_eu * C_eu**(-par.sigma_eu)
 
-    # Resource constraint: gross output net of material absorption
-    eu_RC_res[:] = Y_eu - C_eu - (PM_eu / PF_eu_s) * M_eu
+    # resource constraint
+    eu_RC_res[:] = Y_eu - C_eu
 
     # NKPC
     eu_NKPC_res[:] = pi_eu - (par.beta_eu * pi_eu_plus + par.kappa_eu * (mc_eu - 1.0))
@@ -171,7 +123,14 @@ def us_nk(par, ini, ss,
     # Resource-based market size for Danish exports
     M_us_s[:] = ss.M_us_s * (C_us / ss.C_us)
 
+@nb.njit
+def mon_pol(par,ini,ss,E,CB, E_us, CB_us):
 
+    if par.float == True:
+        E[:] = CB 
+    else:
+        E[:] = ss.E
+    E_us[:]=CB_us
 
 #@nb.njit
 #def mon_pol_us(par,ini,ss, E_us, CB_us):

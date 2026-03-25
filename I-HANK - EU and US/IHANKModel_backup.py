@@ -30,8 +30,8 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.shocks = ['ZTH','ZNT', #domestic TFPs
                        'beta','G', #Domestic preference and fiscal shocks
                        'i_shock', #domestic monetary shock (keep at zero under peg)
-                       'i_shock_eu', 'Z_eu', 'piM_eu_eu', # EU natural-rate, monetary shocks and foreign TFP
-                       'i_shock_us', 'Z_us', 'piM_us_us'] # US natural-rate, monetary shocks and foreign TFP
+                       'i_shock_eu', 'Z_eu', # EU natural-rate, monetary shocks and foreign TFP
+                       'i_shock_us', 'Z_us'] # US natural-rate, monetary shocks and foreign TFP
         self.unknowns = ['CB','NNT','NTH','piWTH','piWNT', 'CB_us', #original # endogenous inputs
                          'C_eu', 'N_eu', 'pi_eu', 'i_eu', 'mc_eu', #EU
                          'C_us', 'N_us', 'pi_us', 'i_us', 'mc_us'] #US 
@@ -41,10 +41,9 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         
         # d. all variables
         self.blocks = [
-            'blocks.mon_pol', # sets the exchange rates first
-            'blocks.material_prices', # sets the foreign prices (PF_eu and PF_us)
             'blocks.eu_nk', # closed-economy EU NK block (triangular, no SOE feedback)
             'blocks.us_nk', # closed-economy US NK block (triangular, no SOE feedback)
+            'blocks.mon_pol', # sets the peg E (fixed)
             #'blocks.mon_pol_us',# sets the  E_us (float)
             'blocks.production',
             'blocks.prices',
@@ -115,13 +114,8 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.Y_eu_ss=1.0             #EU outputlevel normalization for reporting
         par.chi_M_eu=1.0            #sensitivity of EU market size to EU activity 
 
-        # EU materials in production
-        par.beta_M_eu = 0.10        # material share in outer CES (labor vs. materials)
-        par.eta_VA_eu = 1.50        # elasticity in outer CES
-        par.alpha_M_eu_us = 0.10    # US share in EU materials bundle
-        par.eta_M_eu = 1.50         # elasticity EU vs US materials in inner CES
-
         #EU demand for SOE exports (armington)
+        
         par.M_eu_s_ss = np.nan # size of foreign market (determined in ss)
 
          # e2) US economy
@@ -152,7 +146,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # g. grids         
         par.a_min = 0.0 # maximum point in grid for a
         par.a_max = 50.0 # maximum point in grid for a
-        par.Na = 100 # number of grid points #SÆT TIL 500 IGEN
+        par.Na = 500 # number of grid points
 
         # h. shocks
         par.jump_beta = 0.00 # initial jump
@@ -184,10 +178,10 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.max_iter_simulate = 50_000 # maximum number of iterations when simulating
         par.max_iter_broyden = 100 # maximum number of iteration when solving eq. system
         
-        par.tol_ss = 1e-6 # tolerance when finding steady state - set to -12 again
-        par.tol_solve = 1e-6 # tolerance when solving
-        par.tol_simulate = 1e-6 # tolerance when simulating
-        par.tol_broyden = 1e-6 # tolerance when solving eq. system set to -10 again
+        par.tol_ss = 1e-12 # tolerance when finding steady state
+        par.tol_solve = 1e-12 # tolerance when solving
+        par.tol_simulate = 1e-12 # tolerance when simulating
+        par.tol_broyden = 1e-10 # tolerance when solving eq. system
 
         par.py_hh = False # use python in household problem
         par.py_blocks = False # use python in blocks
