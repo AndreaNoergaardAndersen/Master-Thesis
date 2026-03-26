@@ -30,26 +30,25 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.shocks = ['ZTH','ZNT', #domestic TFPs
                        'beta','G', #Domestic preference and fiscal shocks
                        'i_shock', #domestic monetary shock (keep at zero under peg)
-                       'rn_eu','i_shock_eu', 'Z_eu', # EU natural-rate, monetary shocks and foreign TFP
-                       'rn_us','i_shock_us', 'Z_us'] # US natural-rate, monetary shocks and foreign TFP
-        self.unknowns = ['CB','NNT','NTH','piWTH','piWNT', #original # endogenous inputs
-                         'x_eu', 'pi_eu', 'i_eu',#EU
-                         'x_us', 'pi_us', 'i_us', 'CB_us', #US
-                         'M_TH'] #Materials 
+                       'i_shock_eu', 'Z_eu', # EU monetary shocks and foreign TFP
+                       'i_shock_us', 'Z_us'] # US monetary shocks and foreign TFP
+        self.unknowns = ['CB','NNT','NTH','piWTH','piWNT', 'CB_us', #original # endogenous inputs
+                         'C_eu', 'N_eu', 'pi_eu', 'i_eu', 'M_eu', #EU
+                         'C_us', 'N_us', 'pi_us', 'i_us', 'M_us', #US
+                         'I_TH'] #Materials 
         self.targets = ['NKWCT_res','NKWCNT_res','clearing_YTH','clearing_YNT',  # domestic wage NKPCs + market clearing #targets
-                        'eu_IS_res', 'eu_NKPC_res', 'eu_TR_res', 'UIP_res', #EU NK residuals + peg conditions
-                        'us_IS_res', 'us_NKPC_res', 'us_TR_res', 'UIP_res_us', #US NK residuals
-                        'FOC_M_TH_res'] #Materials
+                        'eu_Euler_res', 'eu_NKPC_res', 'eu_TR_res', 'eu_LS_res', 'eu_RC_res', 'UIP_res', #EU NK residuals + peg conditions
+                        'us_Euler_res', 'us_NKPC_res', 'us_TR_res', 'us_LS_res', 'us_RC_res', 'UIP_res_us', #US NK residuals
+                        'FOC_I_TH_res','FOC_I_eu_res','FOC_I_us_res'] #Materials
         
         # d. all variables
         self.blocks = [
+            'blocks.mon_pol', # sets the peg E (fixed)
+            'blocks.materials_prices', #finds price materials
             'blocks.eu_nk', # closed-economy EU NK block (triangular, no SOE feedback)
             'blocks.us_nk', # closed-economy US NK block (triangular, no SOE feedback)
-            'blocks.mon_pol', # sets the peg E (fixed)
-            'blocks.mon_pol_us',# sets the  E_us (float)
-            'blocks.materials_prices', #finds price materials
             'blocks.production',
-            'blocks.FOC_M_TH', #sets FOC for materials
+            'blocks.FOC_I_TH', #sets FOC for materials
             'blocks.prices',
             'blocks.inflation', 
             'blocks.central_bank',
@@ -102,48 +101,59 @@ class IHANKModelClass(EconModelClass,GEModelClass):
  
         # e. foreign Economy
         par.share_X_us=0.5 #share of DK exports goint to US in SS
+        par.eta_s = 2.0 # Armington elasticity of foreign demand
         # e1) EU economy
-        par.beta_eu = par.beta      # can be set separately
-        par.sigma_eu = 1.0          # IS slope (1/intertemporal elasticity)
+        par.i_eu_ss=0.005           #zero inflation in SS
+        par.beta_eu = 1.0/(1.0+par.i_eu_ss)     # can be set separately  
+        par.sigma_eu = par.sigma    # inverse of intertemporal elasticity of substitution
+        par.nu_eu= par.nu           # Frisch elasticity of labor supply
+        par.varphi_eu = np.nan      # disutility of labor (determined in ss)
+
         par.kappa_eu = 0.05         # NKPC slope
         par.phi_pi_eu = 1.5         # Taylor rule on inflation
-        par.phi_x_eu = 0.0          # Taylor rule on output gap
         
         par.W_eu_ss=1.0             #EU nominal wage in EUR (numeraire)
         par.Y_eu_ss=1.0             #EU outputlevel normalization for reporting
         par.chi_M_eu=1.0            #sensitivity of EU market size to EU activity 
 
-        par.rn_eu_ss=0.005
-        par.i_eu_ss=par.rn_eu_ss #zero inflation in SS
-
         #EU demand for SOE exports (armington)
-        par.eta_s = 2.0 # Armington elasticity of foreign demand
         par.M_eu_s_ss = np.nan # size of foreign market (determined in ss)
 
-         # e2) US economy
-        par.beta_us = par.beta      # can be set separately
-        par.sigma_us = 1.0          # IS slope (1/intertemporal elasticity)
+        # e2) US economy
+        par.i_us_ss=0.005           #zero inflation in SS
+        par.beta_us = 1.0/(1.0+par.i_us_ss)     # can be set separately  
+        par.sigma_us = par.sigma    # inverse of intertemporal elasticity of substitution
+        par.nu_us= par.nu           # Frisch elasticity of labor supply
+        par.varphi_us = np.nan      # disutility of labor (determined in ss)
+
         par.kappa_us = 0.05         # NKPC slope
         par.phi_pi_us = 1.5         # Taylor rule on inflation
-        par.phi_x_us = 0.0          # Taylor rule on output gap
         
-        par.W_us_ss=1.0             #EU nominal wage in EUR (numeraire)
-        par.Y_us_ss=1.0             #EU outputlevel normalization for reporting
+        par.W_us_ss=1.0             #US nominal wage in USD (numeraire)
+        par.Y_us_ss=1.0             #US outputlevel normalization for reporting
         par.chi_M_us=1.0            #sensitivity of US market size to US activity 
 
-        par.rn_us_ss=0.005
-        par.i_us_ss=par.rn_us_ss #zero inflation in SS
-
         #US demand for SOE exports (armington)
-        par.eta_us_s = 2.0 # Armington elasticity of foreign demand
         par.M_us_s_ss = np.nan # size of foreign market (determined in ss)
 
         # f. production
-        par.beta_M = 0.40        # materials share in outer nest
+        par.beta_I = 0.40        # materials share in outer nest
         par.eta_VA = 0.60        # elasticity labor vs materials (outer)
 
-        par.alpha_M_us = 0.50    # US share inside materials bundle
-        par.eta_M = 0.30         # elasticity US vs EU materials (inner, LOW)
+        par.alpha_I_us = 0.50    # US share inside materials bundle
+        par.eta_I = 0.30         # elasticity US vs EU materials (inner, LOW)
+
+        # EU production
+        par.beta_I_eu = par.beta_I
+        par.eta_VA_eu = par.eta_VA
+        par.alpha_I_eu_us = 0.50
+        par.eta_I_eu = par.eta_I
+
+        # US production
+        par.beta_I_us = par.beta_I
+        par.eta_VA_us = par.eta_VA
+        par.alpha_I_us_eu = 0.50
+        par.eta_I_us = par.eta_I
 
         # g. government
         par.tau_ss = 0.30 # tax rate on labor income
@@ -172,19 +182,11 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.std_i_shock = 0.00 # std.
 
         # EU shocks
-        par.jump_rn_eu = 0.00
-        par.rho_rn_eu = 0.00
-        par.std_rn_eu = 0.00
-
         par.jump_i_shock_eu = 0.00
         par.rho_i_shock_eu = 0.00
         par.std_i_shock_eu = 0.00
 
         # US shocks
-        par.jump_rn_us = 0.00
-        par.rho_rn_us = 0.00
-        par.std_rn_us = 0.00
-
         par.jump_i_shock_us = 0.00
         par.rho_i_shock_us = 0.00
         par.std_i_shock_us = 0.00

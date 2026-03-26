@@ -32,134 +32,178 @@ def price_from_inflation(P,pi,T,iniP):
 ## Blocks ##
 ############
 @nb.njit
-def eu_nk(par, ini, ss,
-          rn_eu, i_shock_eu, Z_eu,
-          x_eu, pi_eu, i_eu,
-          PF_eu_s, rF_eu, M_eu_s,   # <-- ADD M_eu_s here
-          Y_eu, N_eu, mc_eu,
-          eu_IS_res, eu_NKPC_res, eu_TR_res):
-    """Closed simple EU NK block (log-linear in x and pi), producing PF_eu_s (EU price level).
-
-    Variables:
-      x_eu   : output gap
-      pi_eu  : inflation (e.g. 0.01 = 1%)
-      i_eu   : nominal policy rate
-      PF_eu_s: EU price level in EUR
-
-    Shocks:
-      rn_eu      : natural real rate
-      i_shock_eu : EU monetary policy shock
-    """
-
-    # 1) Taylor rule residual
-    eu_TR_res[:] = i_eu - (ss.i_eu
-                           + par.phi_pi_eu * (pi_eu - ss.pi_eu)
-                           + par.phi_x_eu * (x_eu - ss.x_eu)
-                           + i_shock_eu)
-
-    # 2) IS curve residual: x_t = E x_{t+1} - (1/sigma)(i_t - E pi_{t+1} - rn_t)
-    x_plus = lead(x_eu, ss.x_eu)
-    pi_plus = lead(pi_eu, ss.pi_eu)
-    eu_IS_res[:] = x_eu - (x_plus - (1.0 / par.sigma_eu) * (i_eu - pi_plus - rn_eu))
-
-    # 4) EU price level from inflation (in EUR)
-    price_from_inflation(PF_eu_s, pi_eu, par.T, ss.PF_eu_s)
-
-    mc_eu[:]=(par.W_eu_ss/Z_eu)/PF_eu_s
-
-    # NKPC in marginal cost
-    eu_NKPC_res[:] = pi_eu - (par.beta_eu*pi_plus + par.kappa_eu*(mc_eu - 1.0))
-
-    # EU ex ante real rate used in UIP: (1+i)/(1+E pi(+1)) - 1
-    rF_eu[:] = (1.0 + i_eu)/(1.0 + pi_plus) - 1.0
-
-    # -------------------------------------------------
-    # NEW: EU market size for SOE exports (endogenous)
-    # -------------------------------------------------
-    # Contractionary monetary policy -> x_eu falls -> M_eu_s falls
-    M_eu_s[:] = ss.M_eu_s * np.exp(par.chi_M_eu * x_eu)
-
-    # Optional accounting: EU exports and absorption
-    #X_eu_to_dk[:] = CTF
-    Y_eu[:] = ss.Y_eu * (1.0 + x_eu)
-    N_eu[:] = Y_eu / Z_eu
-    #C_eu[:] = Y_eu - X_eu_to_dk
-
-@nb.njit
-def us_nk(par, ini, ss,
-          rn_us, i_shock_us, Z_us,
-          x_us, pi_us, i_us,
-          PF_us_s, rF_us, M_us_s,
-          Y_us, N_us, mc_us,
-          us_IS_res, us_NKPC_res, us_TR_res):
-    """Closed simple EU NK block (log-linear in x and pi), producing PF_us_s (US price level).
-    """
-
-    # 1) Taylor rule residual
-    us_TR_res[:] = i_us - (ss.i_us
-                           + par.phi_pi_us * (pi_us - ss.pi_us)
-                           + par.phi_x_us  * (x_us  - ss.x_us)
-                            + i_shock_us)
-
-    # 2) IS curve residual: x_t = E x_{t+1} - (1/sigma)(i_t - E pi_{t+1} - rn_t)
-    x_plus  = lead(x_us, ss.x_us)
-    pi_plus = lead(pi_us, ss.pi_us)
-    us_IS_res[:] = x_us - (x_plus - (1.0 / par.sigma_us) * (i_us - pi_plus - rn_us))
-
-    # 4) EU price level from inflation (in USD)
-    price_from_inflation(PF_us_s, pi_us, par.T, ss.PF_us_s)
-
-    mc_us[:] = (par.W_us_ss / Z_us) / PF_us_s
-
-    # NKPC in marginal cost
-    us_NKPC_res[:] = pi_us - (par.beta_us*pi_plus + par.kappa_us*(mc_us - 1.0))
-
-    # EU ex ante real rate used in UIP: (1+i)/(1+E pi(+1)) - 1
-    rF_us[:] = (1.0 + i_us)/(1.0 + pi_plus) - 1.0
-
-    # -------------------------------------------------
-    # NEW: EU market size for SOE exports (endogenous)
-    # -------------------------------------------------
-    # Contractionary monetary policy -> x_us falls -> M_us_s falls
-    M_us_s[:] = ss.M_us_s * np.exp(par.chi_M_us * x_us)
-
-    # accounting
-    Y_us[:] = ss.Y_us * (1.0 + x_us)
-    N_us[:] = Y_us / Z_us
-
-@nb.njit
-def mon_pol(par,ini,ss,E,CB):
+def mon_pol(par,ini,ss,E,CB, E_us, CB_us):
 
     if par.float == True:
         E[:] = CB 
     else:
         E[:] = ss.E
-
-@nb.njit
-def mon_pol_us(par,ini,ss, E_us, CB_us):
-
     E_us[:]=CB_us
 
 @nb.njit
 def materials_prices(par, ini, ss,
-                     PF_eu_s, PF_us_s, E, E_us,
-                     PM_eu, PM_us, PM):
+                   pi_eu, pi_us, E, E_us,
+                   PF_eu_s, PF_us_s,
+                   PM_eu, PM_us, PM,
+                   PM_eu_eu, PM_eu_us, PM_eu_bundle,
+                   PM_us_eu, PM_us_us, PM_us_bundle
+                   ):
+
+    # foreign final-goods prices in own currency
+    price_from_inflation(PF_eu_s, pi_eu, par.T, ss.PF_eu_s)
+    price_from_inflation(PF_us_s, pi_us, par.T, ss.PF_us_s)
+
+    # Danish materials prices in DKK
+    PM_eu[:] = PF_eu_s * E
+    PM_us[:] = PF_us_s * E_us
+    PM[:] = price_index(PM_us, PM_eu, par.eta_I, par.alpha_I_us)
+
+    # EU materials bundle prices in EUR
+    PM_eu_eu[:] = PF_eu_s
+    PM_eu_us[:] = PF_us_s * E_us / E
+    PM_eu_bundle[:] = price_index(PM_eu_us, PM_eu_eu, par.eta_I_eu, par.alpha_I_eu_us)
+
+    # US materials bundle prices in USD
+    PM_us_eu[:] = PF_eu_s * E / E_us
+    PM_us_us[:] = PF_us_s
+    PM_us_bundle[:] = price_index(PM_us_eu, PM_us_us, par.eta_I_us, par.alpha_I_us_eu)
+
+@nb.njit
+def eu_nk(par, ini, ss,
+          Z_eu, i_shock_eu,
+          C_eu, N_eu, pi_eu, i_eu, M_eu,
+          PF_eu_s, rF_eu, M_eu_s, W_eu, Y_eu, mc_eu,
+          PM_eu_bundle,
+          eu_Euler_res, eu_LS_res, eu_NKPC_res, eu_TR_res, eu_RC_res,
+          FOC_I_eu_res):
+
+    # Forward-looking objects
+    C_eu_plus = lead(C_eu, ss.C_eu)
+    pi_eu_plus = lead(pi_eu, ss.pi_eu)
+
+    # EU price level in EUR
+    price_from_inflation(PF_eu_s, pi_eu, par.T, ss.PF_eu_s)
+
+    # Fisher equation
+    rF_eu[:] = (1.0 + i_eu) / (1.0 + pi_eu_plus) - 1.0
+
+    # Output and wage
+    W_eu[:] = PF_eu_s
+
+    # production
+    rho = (par.eta_VA_eu - 1.0) / par.eta_VA_eu
+    inside = (1.0 - par.beta_I_eu) * (N_eu ** rho) + par.beta_I_eu * (M_eu ** rho)
+    Y_eu[:] = Z_eu * (inside ** (1.0 / rho))
+
+    # marginal cost / unit cost
+    pow_ = 1.0 - par.eta_VA_eu
+    mc_eu[:] = (1.0 / Z_eu) * (
+        ((1.0 - par.beta_I_eu) * (W_eu ** pow_) + par.beta_I_eu * (PM_eu_bundle ** pow_)) ** (1.0 / pow_)
+    )
+
+    # Euler equation
+    eu_Euler_res[:] = C_eu**(-par.sigma_eu) - par.beta_eu * (1.0 + rF_eu) * C_eu_plus**(-par.sigma_eu)
+
+    # labor supply (real wage in EUR terms)
+    eu_LS_res[:] = par.varphi_eu * N_eu**par.nu_eu - (W_eu / PF_eu_s) * C_eu**(-par.sigma_eu)
+
+    # intermediate demands by source
+    #M_th_eu = (1.0 - par.alpha_I_us) * (PM_eu / PM) ** (-par.eta_I) * I_TH
+    #M_us_eu = par.alpha_I_us_eu * (PM_us_eu / PM_us_bundle) ** (-par.eta_I_us) * M_us
+
+    # foreign resource constraint
+    eu_RC_res[:] = Y_eu - C_eu
+
+    # NKPC
+    eu_NKPC_res[:] = pi_eu - (par.beta_eu * pi_eu_plus + par.kappa_eu * (mc_eu - 1.0))
+
+    # Taylor rule
+    eu_TR_res[:] = i_eu - (ss.i_eu + par.phi_pi_eu * (pi_eu - ss.pi_eu) + i_shock_eu)
+
+    # reduced-form demand for Danish exports
+    M_eu_s[:] = ss.M_eu_s * (C_eu / ss.C_eu)
+
+    ratio = (par.beta_I_eu / (1.0 - par.beta_I_eu)) * (W_eu / PM_eu_bundle) ** par.eta_VA_eu
+    FOC_I_eu_res[:] = M_eu - N_eu * ratio
+
+
+@nb.njit
+def us_nk(par, ini, ss,
+          Z_us, i_shock_us,
+          C_us, N_us, pi_us, i_us, M_us,
+          PF_us_s, rF_us, M_us_s, W_us, Y_us, mc_us,
+          PM_us_bundle,
+          us_Euler_res, us_LS_res, us_NKPC_res, us_TR_res, us_RC_res,
+          FOC_I_us_res):
+
+    C_us_plus = lead(C_us, ss.C_us)
+    pi_us_plus = lead(pi_us, ss.pi_us)
+
+    # Fisher
+    rF_us[:] = (1.0 + i_us) / (1.0 + pi_us_plus) - 1.0
+
+    # wage in USD
+    W_us[:] = PF_us_s
+
+    # production
+    rho = (par.eta_VA_us - 1.0) / par.eta_VA_us
+    inside = (1.0 - par.beta_I_us) * (N_us ** rho) + par.beta_I_us * (M_us ** rho)
+    Y_us[:] = Z_us * (inside ** (1.0 / rho))
+
+    # marginal cost / unit cost
+    pow_ = 1.0 - par.eta_VA_us
+    mc_us[:] = (1.0 / Z_us) * (
+        ((1.0 - par.beta_I_us) * (W_us ** pow_) + par.beta_I_us * (PM_us_bundle ** pow_)) ** (1.0 / pow_)
+    )
+
+    # Euler
+    us_Euler_res[:] = C_us**(-par.sigma_us) - par.beta_us * (1.0 + rF_us) * C_us_plus**(-par.sigma_us)
+
+    # labor supply
+    us_LS_res[:] = par.varphi_us * N_us**par.nu_us - (W_us / PF_us_s) * C_us**(-par.sigma_us)
+
+    # intermediate demands by source
+    #M_th_us = par.alpha_I_us * (PM_us / PM) ** (-par.eta_I) * I_TH
+    #M_eu_us = par.alpha_I_eu_us * (PM_eu_us / PM_eu_bundle) ** (-par.eta_I_eu) * M_eu
+
+    # foreign resource constraint
+    us_RC_res[:] = Y_us - C_us
+
+    # NKPC
+    us_NKPC_res[:] = pi_us - (par.beta_us * pi_us_plus + par.kappa_us * (mc_us - 1.0))
+
+    # Taylor rule
+    us_TR_res[:] = i_us - (ss.i_us + par.phi_pi_us * (pi_us - ss.pi_us) + i_shock_us)
+
+    # reduced-form demand for Danish exports
+    M_us_s[:] = ss.M_us_s * (C_us / ss.C_us)
+
+    ratio = (par.beta_I_us / (1.0 - par.beta_I_us)) * (W_us / PM_us_bundle) ** par.eta_VA_us
+    FOC_I_us_res[:] = M_us - N_us * ratio
+    
+
+
+
+#@nb.njit
+#def materials_prices(par, ini, ss,
+#                     PF_eu_s, PF_us_s, E, E_us,
+#                     PM_eu, PM_us, PM):
     """
     Separate materials prices in DKK (distinct objects from household import prices).
     Later tariffs will enter naturally as wedges here.
     """
 
     # materials prices in DKK
-    PM_eu[:] = PF_eu_s * E
-    PM_us[:] = PF_us_s * E_us
+#    PM_eu[:] = PF_eu_s * E
+#    PM_us[:] = PF_us_s * E_us
 
     # composite materials price index (inner CES)
-    PM[:] = price_index(PM_us, PM_eu, par.eta_M, par.alpha_M_us)
+#    PM[:] = price_index(PM_us, PM_eu, par.eta_I, par.alpha_I_us)
 
 
 @nb.njit
 def production(par, ini, ss,
-               ZTH, ZNT, NTH, NNT, M_TH, PM, piWTH, piWNT,
+               ZTH, ZNT, NTH, NNT, I_TH, PM, piWTH, piWNT,
                YTH, YNT, WTH, WNT, PTH, PNT, MC_TH):
     
     
@@ -176,26 +220,26 @@ def production(par, ini, ss,
 
     # quantity production
     # YTH = ZTH * [ (1-beta) N^rho + beta M^rho ]^(1/rho)
-    inside = (1.0 - par.beta_M) * (NTH ** rho) + par.beta_M * (M_TH ** rho)
+    inside = (1.0 - par.beta_I) * (NTH ** rho) + par.beta_I * (I_TH ** rho)
     YTH[:] = ZTH * (inside ** (1.0 / rho))
 
     # --- Unit cost / marginal cost (perfect competition => PTH=MC_TH) ---
     # MC = (1/Z) * [ (1-beta) W^(1-eta) + beta PM^(1-eta) ]^(1/(1-eta))
     pow_ = 1.0 - par.eta_VA
-    MC_TH[:] = (1.0 / ZTH) * (((1.0 - par.beta_M) * (WTH ** pow_) + par.beta_M * (PM ** pow_)) ** (1.0 / pow_))
+    MC_TH[:] = (1.0 / ZTH) * (((1.0 - par.beta_I) * (WTH ** pow_) + par.beta_I * (PM ** pow_)) ** (1.0 / pow_))
     PTH[:] = MC_TH
 
 @nb.njit
-def FOC_M_TH(par, ini, ss,
-             NTH, M_TH, WTH, PM,
-             FOC_M_TH_res):
+def FOC_I_TH(par, ini, ss,
+             NTH, I_TH, WTH, PM,
+             FOC_I_TH_res):
     """
     Cost-minimizing condition between labor and materials for given output:
     M/N = (beta/(1-beta)) * (W/PM)^{eta_VA}
     """
 
-    ratio = (par.beta_M / (1.0 - par.beta_M)) * (WTH / PM) ** (par.eta_VA)
-    FOC_M_TH_res[:] = M_TH - NTH * ratio
+    ratio = (par.beta_I / (1.0 - par.beta_I)) * (WTH / PM) ** (par.eta_VA)
+    FOC_I_TH_res[:] = I_TH - NTH * ratio
 
 @nb.njit
 def prices(par,ini,ss,
@@ -344,7 +388,7 @@ def consumption(par,ini,ss,
 
     # d. foreign demand for DK tradables (exports)
     CTH_eu_s[:] = (PTH_eu_s/PF_eu_s)**(-par.eta_s)*M_eu_s
-    CTH_us_s[:] = (PTH_us_s/PF_us_s)**(-par.eta_us_s)*M_us_s
+    CTH_us_s[:] = (PTH_us_s/PF_us_s)**(-par.eta_s)*M_us_s
 
 @nb.njit
 def market_clearing(par,ini,ss,
