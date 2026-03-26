@@ -21,9 +21,9 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # b. household
         self.grids_hh = ['a'] # grids
         self.pols_hh = ['a'] # policy functions
-        self.inputs_hh = ['beta','ra','inc_TH','inc_NT'] # direct inputs
+        self.inputs_hh = ['beta','ra','inc_TH','inc_NT'] # direct inputs # add more sectors here
         self.inputs_hh_z = [] # transition matrix inputs
-        self.outputs_hh = ['a','c','uc_TH','uc_NT','c_TH','c_NT'] # outputs
+        self.outputs_hh = ['a','c','uc_TH','uc_NT','c_TH','c_NT'] # outputs # add more sectors here
         self.intertemps_hh = ['vbeg_a'] # intertemporal variables
 
         # c. GE
@@ -37,7 +37,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
                          'C_us', 'N_us', 'pi_us', 'i_us', 'mc_us'] #US 
         self.targets = ['NKWCT_res','NKWCNT_res','clearing_YTH','clearing_YNT',  # domestic wage NKPCs + market clearing #targets
                         'eu_Euler_res', 'eu_NKPC_res', 'eu_TR_res', 'eu_LS_res', 'eu_RC_res', 'UIP_res', #EU NK residuals + peg conditions
-                        'us_Euler_res', 'us_NKPC_res', 'us_TR_res', 'us_LS_res', 'us_RC_res', 'UIP_res_us']
+                        'us_Euler_res', 'us_NKPC_res', 'us_TR_res', 'us_LS_res', 'us_RC_res', 'UIP_res_us'] #US NK residuals
         
         # d. all variables
         self.blocks = [
@@ -46,16 +46,16 @@ class IHANKModelClass(EconModelClass,GEModelClass):
             'blocks.eu_nk', # closed-economy EU NK block (triangular, no SOE feedback)
             'blocks.us_nk', # closed-economy US NK block (triangular, no SOE feedback)
             #'blocks.mon_pol_us',# sets the  E_us (float)
-            'blocks.production',
-            'blocks.prices',
-            'blocks.inflation', 
+            'blocks.production', # add more sectors here
+            'blocks.prices', # add more price indexes here
+            'blocks.inflation', # add more inflation rates here
             'blocks.central_bank',
             'blocks.government',
-            'hh',
+            'hh', # add more sectors here
             'blocks.NKWCs',
             'blocks.UIP',
-            'blocks.consumption',
-            'blocks.market_clearing',            
+            'blocks.consumption', # add more goods here; choice after T / NT
+            'blocks.market_clearing', # add more sectors here            
             'blocks.accounting',            
         ]        
 
@@ -63,14 +63,14 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.solve_hh_backwards = household_problem.solve_hh_backwards
         
     def setup(self):
-        """ set baseline parameters """
+        """ set baseline parameters """ # calibrate to match Danish economy
 
         par = self.par
 
         # a. discrete states
-        par.Nfix = 2 # number of sectors sectors
+        par.Nfix = 2 # number of sectors # change to 5
         par.Nz = 7 # idiosyncratic productivity
-        par.sT = 0.25 # share of workers in tradeable sector
+        par.sT = 0.25 # share of workers in tradeable sector - change!
 
         # b. preferences
         par.beta = 0.975 # discount factor
@@ -95,14 +95,20 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         
         # d. price setting
         par.kappa = 0.1 # slope of wage Phillips curve
-        par.muw = 1.2 # wage mark-up       
+        par.muw = 1.2 # wage mark-up
+
+        #DK production
+        par.beta_M_dk = 0.10        # material share in outer CES (labor vs. materials)
+        par.eta_VA_dk = 1.50        # elasticity in outer CES
+        par.alpha_M_dk_us = 0.10    # US share in EU materials bundle
+        par.eta_M_dk = 1.50         # elasticity EU vs US materials in inner CES       
  
         # e. foreign Economy
         
-        par.share_X_us=0.5 #share of DK exports goint to US in SS
+        par.share_X_us = 0.5 # share of DK exports goint to US in SS
         par.eta_s = 2.0 # Armington elasticity of foreign demand
         # e1) EU economy
-        par.i_eu_ss=0.005           #zero inflation in SS
+        par.i_eu_ss = 0.005           #zero inflation in SS
         par.beta_eu = 1.0/(1.0+par.i_eu_ss)     # can be set separately  
         par.sigma_eu = par.sigma    # inverse of intertemporal elasticity of substitution
         par.nu_eu= par.nu           # Frisch elasticity of labor supply
@@ -136,7 +142,13 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         
         par.W_us_ss=1.0             #US nominal wage in USD (numeraire)
         par.Y_us_ss=1.0             #US outputlevel normalization for reporting
-        par.chi_M_us=1.0            #sensitivity of US market size to US activity 
+        par.chi_M_us=1.0            #sensitivity of US market size to US activity
+
+        # US materials in production
+        par.beta_M_us = 0.10        # material share in outer CES (labor vs. materials)
+        par.eta_VA_us = 1.50        # elasticity in outer CES
+        par.alpha_M_us_us = 0.10    # US share in US materials bundle
+        par.eta_M_us = 1.50         # elasticity US vs EU materials in inner CES 
 
         #US demand for SOE exports (armington)
         par.M_us_s_ss = np.nan # size of foreign market (determined in ss)
