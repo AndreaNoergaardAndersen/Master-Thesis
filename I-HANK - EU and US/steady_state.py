@@ -137,12 +137,14 @@ def evaluate_ss(model,do_print=False):
     # EU materials steady state (nested CES in production)
     ss.PM_eu_us = ss.PM_us_us * ss.E_us / ss.E
     ss.PM_eu = blocks.price_index(ss.PM_eu_us, ss.PM_eu_eu, par.eta_M_eu, par.alpha_M_eu_us)
+    
+    
     ss.W_eu = ss.PF_eu_s
     ss.M_eu = ss.N_eu * (par.beta_M_eu / (1.0 - par.beta_M_eu)) * ((ss.W_eu/ss.PF_eu_s) / (ss.PM_eu/ss.PF_eu_s))**par.eta_VA_eu
     ss.M_eu_us = par.alpha_M_eu_us * (ss.PM_eu_us / ss.PM_eu)**(-par.eta_M_eu) * ss.M_eu
     ss.M_eu_eu = (1.0 - par.alpha_M_eu_us) * (ss.PM_eu_eu / ss.PM_eu)**(-par.eta_M_eu) * ss.M_eu
     rho_eu = (par.eta_VA_eu - 1.0) / par.eta_VA_eu
-    ss.Y_eu = ss.Z_eu * (((1.0 - par.beta_M_eu) * ss.N_eu**rho_eu + par.beta_M_eu * ss.M_eu**rho_eu) ** (1.0 / rho_eu))
+    ss.Y_eu = ss.Z_eu * (((1.0 - par.beta_M_eu)**(1.0/par.eta_VA_eu) * ss.N_eu**rho_eu + par.beta_M_eu**(1.0/par.eta_VA_eu) * ss.M_eu**rho_eu) ** (1.0 / rho_eu))
     ss.C_eu = ss.Y_eu - (ss.PM_eu / ss.PF_eu_s) * ss.M_eu
     par.varphi_eu = (ss.W_eu / ss.PF_eu_s) * ss.C_eu**(-par.sigma_eu) / (ss.N_eu**par.nu_eu)
 
@@ -154,7 +156,7 @@ def evaluate_ss(model,do_print=False):
     ss.M_us_us = par.alpha_M_us_us * (ss.PM_us_us / ss.PM_us)**(-par.eta_M_us) * ss.M_us
     ss.M_us_eu = (1.0 - par.alpha_M_us_us) * (ss.PM_us_eu / ss.PM_us)**(-par.eta_M_us) * ss.M_us
     rho_us = (par.eta_VA_us - 1.0) / par.eta_VA_us
-    ss.Y_us = ss.Z_us * (((1.0 - par.beta_M_us) * ss.N_us**rho_us + par.beta_M_us * ss.M_us**rho_us) ** (1.0 / rho_us))
+    ss.Y_us = ss.Z_us * (((1.0 - par.beta_M_us)**(1.0/par.eta_VA_us) * ss.N_us**rho_us + par.beta_M_us**(1.0/par.eta_VA_us) * ss.M_us**rho_us) ** (1.0 / rho_us))
     ss.C_us = ss.Y_us - (ss.PM_us / ss.PF_us_s) * ss.M_us
     par.varphi_us = (ss.W_us / ss.PF_us_s) * ss.C_us**(-par.sigma_us) / (ss.N_us**par.nu_us)
 
@@ -189,7 +191,7 @@ def evaluate_ss(model,do_print=False):
     ss.M_dk_eu = (1.0 - par.alpha_M_dk_us) * (ss.PM_dk_eu / ss.PM_dk)**(-par.eta_M_dk) * ss.M_dk
 
     rho_dk = (par.eta_VA_dk - 1.0) / par.eta_VA_dk
-    ss.YTH = ss.ZTH * (((1.0 - par.beta_M_dk) * ss.NTH**rho_dk + par.beta_M_dk * ss.M_dk**rho_dk) ** (1.0 / rho_dk))
+    ss.YTH = ss.ZTH * (((1.0 - par.beta_M_dk)**(1.0/par.eta_VA_dk) * ss.NTH**rho_dk + par.beta_M_dk**(1.0/par.eta_VA_dk) * ss.M_dk**rho_dk) ** (1.0 / rho_dk))
 
     # c. household 
     ss.tau = par.tau_ss
@@ -250,7 +252,7 @@ def evaluate_ss(model,do_print=False):
     ss.NFA = ss.A_hh - ss.B
 
     # zero net foreign assets
-    ss.GDP = ss.YTH + ss.YNT
+    ss.GDP = ss.YTH - ss.PM_dk*ss.M_dk/ss.P + ss.YNT
     ss.NX = ss.GDP - ss.C_hh - ss.G
     ss.NFA = ss.A_hh - ss.B
     ss.CA = ss.NX + ss.ra*ss.NFA

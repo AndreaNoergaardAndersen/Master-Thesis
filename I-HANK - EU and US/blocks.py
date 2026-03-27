@@ -94,18 +94,14 @@ def eu_nk(par, ini, ss,
 
     #PRODUCTION
     # Wage implied by marginal cost under outer CES unit-cost function
+    pm_eu=PM_eu / PF_eu_s
     pow_ = 1.0 - par.eta_VA_eu
-    rhs = ((mc_eu * Z_eu) ** pow_ - par.beta_M_eu * (PM_eu ** pow_)) / (1.0 - par.beta_M_eu)
-    #rhs = np.maximum(rhs, 1e-12)
-    #w_eu = rhs ** (1.0 / pow_)
-    #W_eu[:] = PF_eu_s * w_eu
-
-    # wage implied by marginal cost
-    w_eu = mc_eu * Z_eu
-    W_eu[:] = PF_eu_s * w_eu
+    rhs = ((mc_eu * Z_eu) ** pow_ - par.beta_M_eu * (pm_eu ** pow_)) / (1.0 - par.beta_M_eu)
+    w_eu = rhs ** (1.0 / pow_)          # real wage in units of PF_eu_s
+    W_eu[:] = PF_eu_s * w_eu            # nominal wage
 
     # Static cost-minimizing material demand from outer CES
-    ratio_MN = (par.beta_M_eu / (1.0 - par.beta_M_eu)) * (w_eu / PM_eu) ** par.eta_VA_eu
+    ratio_MN = (par.beta_M_eu / (1.0 - par.beta_M_eu)) * (w_eu / pm_eu) ** par.eta_VA_eu
     M_eu[:] = N_eu * ratio_MN
 
     # Inner CES allocation between EU and US materials
@@ -114,7 +110,7 @@ def eu_nk(par, ini, ss,
 
     # Output from outer CES production function
     rho = (par.eta_VA_eu - 1.0) / par.eta_VA_eu
-    inside = (1.0 - par.beta_M_eu) * (N_eu ** rho) + par.beta_M_eu * (M_eu ** rho)
+    inside = (1.0 - par.beta_M_eu)**(1.0/par.eta_VA_eu) * (N_eu ** rho) + par.beta_M_eu**(1.0/par.eta_VA_eu) * (M_eu ** rho)
     Y_eu[:] = Z_eu * (inside ** (1.0 / rho))
     
 
@@ -137,7 +133,7 @@ def eu_nk(par, ini, ss,
                            + i_shock_eu)
 
     # Resource-based market size for Danish exports
-    M_eu_s[:] = ss.M_eu_s * (Y_eu / ss.Y_eu)
+    M_eu_s[:] = ss.M_eu_s * (C_eu / ss.C_eu)
 
 
 
@@ -161,18 +157,14 @@ def us_nk(par, ini, ss,
 
     #PRODUCTION
     # Wage implied by marginal cost under outer CES unit-cost function
+    pm_us=PM_us / PF_us_s
     pow_ = 1.0 - par.eta_VA_us
-    rhs = ((mc_us * Z_us) ** pow_ - par.beta_M_us * (PM_us ** pow_)) / (1.0 - par.beta_M_us)
-    #rhs = np.maximum(rhs, 1e-12)
-    #w_us = rhs ** (1.0 / pow_)
-    #W_us[:] = PF_us_s * w_us
-
-    # wage implied by marginal cost
-    w_us = mc_us * Z_us
-    W_us[:] = PF_us_s * w_us
+    rhs = ((mc_us * Z_us) ** pow_ - par.beta_M_us * (pm_us ** pow_)) / (1.0 - par.beta_M_us)
+    w_us = rhs ** (1.0 / pow_)          # real wage in units of PF_us_s
+    W_us[:] = PF_us_s * w_us            # nominal wage
 
     # Static cost-minimizing material demand from outer CES
-    ratio_MN = (par.beta_M_us / (1.0 - par.beta_M_us)) * (w_us / PM_us) ** par.eta_VA_us
+    ratio_MN = (par.beta_M_us / (1.0 - par.beta_M_us)) * (w_us / pm_us) ** par.eta_VA_us
     M_us[:] = N_us * ratio_MN
 
     # Inner CES allocation between EU and US materials
@@ -181,7 +173,7 @@ def us_nk(par, ini, ss,
 
     # Output from outer CES production function
     rho = (par.eta_VA_us - 1.0) / par.eta_VA_us
-    inside = (1.0 - par.beta_M_us) * (N_us ** rho) + par.beta_M_us * (M_us ** rho)
+    inside = (1.0 - par.beta_M_us)**(1.0/par.eta_VA_us) * (N_us ** rho) + par.beta_M_us**(1.0/par.eta_VA_us) * (M_us ** rho)
     Y_us[:] = Z_us * (inside ** (1.0 / rho))
     
 
@@ -204,7 +196,7 @@ def us_nk(par, ini, ss,
                            + i_shock_us)
 
     # Resource-based market size for Danish exports
-    M_us_s[:] = ss.M_us_s * (Y_us / ss.Y_us)
+    M_us_s[:] = ss.M_us_s * (C_us / ss.C_us)
 
 
 
@@ -253,7 +245,7 @@ def production(par,ini,ss,
 
     # Gross output from outer CES
     rho = (par.eta_VA_dk - 1.0) / par.eta_VA_dk
-    inside_Y = (1.0 - par.beta_M_dk) * NTH**rho + par.beta_M_dk * M_dk**rho
+    inside_Y = (1.0 - par.beta_M_dk)**(1.0/par.eta_VA_dk) * NTH**rho + par.beta_M_dk**(1.0/par.eta_VA_dk) * M_dk**rho
     YTH[:] = ZTH * (inside_Y ** (1.0 / rho))
 
     #YTH[:] = ZTH*NTH
@@ -424,8 +416,8 @@ def accounting(par,ini,ss,
                GDP,NX,CA,NFA,Walras,
                PM_dk, M_dk):
     
-    GDP[:] = (PTH*YTH+PNT*YNT)/P 
-    NX[:] = GDP-C_hh-PNT/P*G-PM_dk*M_dk/P
+    GDP[:] = (PTH*YTH - PM_dk*M_dk + PNT*YNT) / P
+    NX[:] = GDP - C_hh - PNT/P*G
 
     NFA[:] = A_hh-B
 

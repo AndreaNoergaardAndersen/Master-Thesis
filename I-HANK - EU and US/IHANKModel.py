@@ -164,7 +164,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # g. grids         
         par.a_min = 0.0 # maximum point in grid for a
         par.a_max = 50.0 # maximum point in grid for a
-        par.Na = 100 # number of grid points #SÆT TIL 500 IGEN
+        par.Na = 500 # number of grid points #SÆT TIL 500 IGEN
 
         # h. shocks
         par.jump_beta = 0.00 # initial jump
@@ -196,10 +196,10 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.max_iter_simulate = 50_000 # maximum number of iterations when simulating
         par.max_iter_broyden = 100 # maximum number of iteration when solving eq. system
         
-        par.tol_ss = 1e-6 # tolerance when finding steady state - set to -12 again
-        par.tol_solve = 1e-6 # tolerance when solving
-        par.tol_simulate = 1e-6 # tolerance when simulating
-        par.tol_broyden = 1e-6 # tolerance when solving eq. system set to -10 again
+        par.tol_ss = 1e-12 # tolerance when finding steady state - set to -12 again
+        par.tol_solve = 1e-12 # tolerance when solving
+        par.tol_simulate = 1e-12 # tolerance when simulating
+        par.tol_broyden = 1e-10 # tolerance when solving eq. system set to -10 again
 
         par.py_hh = False # use python in household problem
         par.py_blocks = False # use python in blocks
