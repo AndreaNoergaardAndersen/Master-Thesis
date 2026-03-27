@@ -32,57 +32,12 @@ def price_from_inflation(P,pi,T,iniP):
 ## Blocks ##
 ############
 @nb.njit
-def mon_pol(par,ini,ss,E,CB, E_us, CB_us):
-
-    if par.float == True:
-        E[:] = CB 
-    else:
-        E[:] = ss.E
-    E_us[:]=CB_us
-
-@nb.njit
-def material_prices(par, ini, ss,
-                       piM_eu_eu, piM_us_us,
-                       E, E_us,
-                       PM_eu_eu, PM_us_us, PM_eu_us, PM_eu, PM_us_eu, PM_us,
-                       PM_dk_eu, PM_dk_us, PM_dk, tau_m, tau_x
-                       ):
-    """
-    Separate material-input prices for the EU production block.
-    """
-
-    # EU-sourced material price in EUR
-    price_from_inflation(PM_eu_eu, piM_eu_eu, par.T, ss.PM_eu_eu)
-
-    # US-sourced material price in USD
-    price_from_inflation(PM_us_us, piM_us_us, par.T, ss.PM_us_us)
-
-    # convert to EUR
-    PM_eu_us[:] = (1.0 + tau_m) * PM_us_us * E_us / E # add tariff somewhere around here
-
-
-    # convert to USD for US production block    
-    PM_us_eu[:] = (1.0 + tau_x) * PM_eu_eu * E / E_us
-
-    # inner CES price index
-    PM_eu[:] = price_index(PM_eu_us, PM_eu_eu, par.eta_M_eu, par.alpha_M_eu_us)
-
-    # inner CES price index
-    PM_us[:] = price_index(PM_us_us, PM_us_eu, par.eta_M_us, par.alpha_M_us_us)
-
-    #DK materials price index for production
-    PM_dk_eu[:] = PM_eu_eu * E
-    PM_dk_us[:] = (1.0 + tau_m) *PM_us_us * E_us
-    PM_dk[:] = price_index(PM_dk_us, PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us)
-
-@nb.njit
 def eu_nk(par, ini, ss,
           Z_eu, i_shock_eu,
           Y_eu, C_eu, N_eu, pi_eu, i_eu,
           PF_eu_s, rF_eu, M_eu_s, mc_eu, W_eu,
-          PM_eu_eu, PM_eu_us, PM_eu, M_eu, M_eu_eu, M_eu_us,
           eu_Euler_res, eu_LS_res, eu_NKPC_res, eu_TR_res, eu_RC_res):
-    
+
     # Forward-looking objects
     C_eu_plus = lead(C_eu, ss.C_eu)
     pi_eu_plus = lead(pi_eu, ss.pi_eu)
@@ -93,28 +48,13 @@ def eu_nk(par, ini, ss,
     # Fisher equation
     rF_eu[:] = (1.0 + i_eu) / (1.0 + pi_eu_plus) - 1.0
 
-    #PRODUCTION
-    # Wage implied by marginal cost under outer CES unit-cost function
-    pm_eu=PM_eu / PF_eu_s
-    pow_ = 1.0 - par.eta_VA_eu
-    rhs = ((mc_eu * Z_eu) ** pow_ - par.beta_M_eu * (pm_eu ** pow_)) / (1.0 - par.beta_M_eu)
-    w_eu = rhs ** (1.0 / pow_)          # real wage in units of PF_eu_s
-    W_eu[:] = PF_eu_s * w_eu            # nominal wage
-
-    # Static cost-minimizing material demand from outer CES
-    ratio_MN = (par.beta_M_eu / (1.0 - par.beta_M_eu)) * (w_eu / pm_eu) ** par.eta_VA_eu
-    M_eu[:] = N_eu * ratio_MN
-
-    # Inner CES allocation between EU and US materials
-    M_eu_us[:] = par.alpha_M_eu_us * (PM_eu_us / PM_eu) ** (-par.eta_M_eu) * M_eu
-    M_eu_eu[:] = (1.0 - par.alpha_M_eu_us) * (PM_eu_eu / PM_eu) ** (-par.eta_M_eu) * M_eu
-
-    # Output from outer CES production function
-    rho = (par.eta_VA_eu - 1.0) / par.eta_VA_eu
-    inside = (1.0 - par.beta_M_eu)**(1.0/par.eta_VA_eu) * (N_eu ** rho) + par.beta_M_eu**(1.0/par.eta_VA_eu) * (M_eu ** rho)
-    Y_eu[:] = Z_eu * (inside ** (1.0 / rho))
+    # Output and wage
+    Y_eu[:] = Z_eu * N_eu
+    #N_eu[:]=Y_eu/Z_eu
     
-
+    # wage implied by marginal cost
+    w_eu = mc_eu * Z_eu
+    W_eu[:] = PF_eu_s * w_eu
 
     # Euler equation
     eu_Euler_res[:] = C_eu**(-par.sigma_eu) - par.beta_eu * (1.0 + rF_eu) * C_eu_plus**(-par.sigma_eu)
@@ -122,15 +62,15 @@ def eu_nk(par, ini, ss,
     # Labor supply
     eu_LS_res[:] = par.varphi_eu * N_eu**(par.nu_eu) - w_eu * C_eu**(-par.sigma_eu)
 
-    # Resource constraint: gross output net of material absorption
-    eu_RC_res[:] = Y_eu - C_eu - (PM_eu / PF_eu_s) * M_eu
+    # resource constraint
+    eu_RC_res[:] = Y_eu - C_eu
 
     # NKPC
     eu_NKPC_res[:] = pi_eu - (par.beta_eu * pi_eu_plus + par.kappa_eu * (mc_eu - 1.0))
 
     # Taylor rule
     eu_TR_res[:] = i_eu - (ss.i_eu
-                           + par.phi_pi_eu * (pi_eu - ss.pi_eu) 
+                           + par.phi_pi_eu * (pi_eu - ss.pi_eu)
                            + i_shock_eu)
 
     # Resource-based market size for Danish exports
@@ -143,7 +83,6 @@ def us_nk(par, ini, ss,
           Z_us, i_shock_us,
           Y_us, C_us, N_us, pi_us, i_us,
           PF_us_s, rF_us, M_us_s, mc_us, W_us,
-          PM_us_us, PM_us_eu, PM_us, M_us, M_us_eu, M_us_us,
           us_Euler_res, us_LS_res, us_NKPC_res, us_TR_res, us_RC_res):
 
     # Forward-looking objects
@@ -156,28 +95,13 @@ def us_nk(par, ini, ss,
     # Fisher equation
     rF_us[:] = (1.0 + i_us) / (1.0 + pi_us_plus) - 1.0
 
-    #PRODUCTION
-    # Wage implied by marginal cost under outer CES unit-cost function
-    pm_us=PM_us / PF_us_s
-    pow_ = 1.0 - par.eta_VA_us
-    rhs = ((mc_us * Z_us) ** pow_ - par.beta_M_us * (pm_us ** pow_)) / (1.0 - par.beta_M_us)
-    w_us = rhs ** (1.0 / pow_)          # real wage in units of PF_us_s
-    W_us[:] = PF_us_s * w_us            # nominal wage
-
-    # Static cost-minimizing material demand from outer CES
-    ratio_MN = (par.beta_M_us / (1.0 - par.beta_M_us)) * (w_us / pm_us) ** par.eta_VA_us
-    M_us[:] = N_us * ratio_MN
-
-    # Inner CES allocation between EU and US materials
-    M_us_us[:] = par.alpha_M_us_us * (PM_us_us / PM_us) ** (-par.eta_M_us) * M_us
-    M_us_eu[:] = (1.0 - par.alpha_M_us_us) * (PM_us_eu / PM_us) ** (-par.eta_M_us) * M_us
-
-    # Output from outer CES production function
-    rho = (par.eta_VA_us - 1.0) / par.eta_VA_us
-    inside = (1.0 - par.beta_M_us)**(1.0/par.eta_VA_us) * (N_us ** rho) + par.beta_M_us**(1.0/par.eta_VA_us) * (M_us ** rho)
-    Y_us[:] = Z_us * (inside ** (1.0 / rho))
+    # Output and wage
+    Y_us[:] = Z_us * N_us
+    #N_us[:]=Y_us/Z_us
     
-
+    # wage implied by marginal cost
+    w_us = mc_us * Z_us
+    W_us[:] = PF_us_s * w_us
 
     # Euler equation
     us_Euler_res[:] = C_us**(-par.sigma_us) - par.beta_us * (1.0 + rF_us) * C_us_plus**(-par.sigma_us)
@@ -186,7 +110,7 @@ def us_nk(par, ini, ss,
     us_LS_res[:] = par.varphi_us * N_us**(par.nu_us) - w_us * C_us**(-par.sigma_us)
 
     # resource constraint
-    us_RC_res[:] = Y_us - C_us - (PM_us / PF_us_s) * M_us
+    us_RC_res[:] = Y_us - C_us
 
     # NKPC
     us_NKPC_res[:] = pi_us - (par.beta_us * pi_us_plus + par.kappa_us * (mc_us - 1.0))
@@ -199,7 +123,14 @@ def us_nk(par, ini, ss,
     # Resource-based market size for Danish exports
     M_us_s[:] = ss.M_us_s * (C_us / ss.C_us)
 
+@nb.njit
+def mon_pol(par,ini,ss,E,CB, E_us, CB_us):
 
+    if par.float == True:
+        E[:] = CB 
+    else:
+        E[:] = ss.E
+    E_us[:]=CB_us
 
 #@nb.njit
 #def mon_pol_us(par,ini,ss, E_us, CB_us):
@@ -209,50 +140,19 @@ def us_nk(par, ini, ss,
 @nb.njit
 def production(par,ini,ss,
                ZTH,ZNT,NTH,NNT,piWTH,piWNT,
-               YTH,YNT,WTH,WNT,PTH,PNT,
-               PM_dk, PM_dk_eu, PM_dk_us,
-               M_dk, M_dk_eu, M_dk_us):
+               YTH,YNT,WTH,WNT,PTH,PNT):
     
-    # a. NONTRADEABLES
-    #production function
+    # a. production
+    YTH[:] = ZTH*NTH
     YNT[:] = ZNT*NNT
-    #wages
-    price_from_inflation(WNT,piWNT,par.T,ss.WNT)
-    #prices (p=mc)
-    PNT[:] = WNT/ZNT
-
-
-    # b. TRADEABLES
-    #wages
+    
+    # b. wages
     price_from_inflation(WTH,piWTH,par.T,ss.WTH)
-    
-    pow_ = 1.0 - par.eta_VA_dk
-    # Nominal unit-cost CES
-    inside_cost = (1.0 - par.beta_M_dk) * WTH**pow_ + par.beta_M_dk * PM_dk**pow_
-    PTH[:] = (inside_cost ** (1.0 / pow_)) / ZTH
+    price_from_inflation(WNT,piWNT,par.T,ss.WNT)
 
-    # mc_TH = 1 by construction under perfect competition (price = unit cost)
-    #mc_TH = 1.0
-
-    # Cost-minimizing material demand (ratio to labor, from outer CES FOCs)
-    # M/N = (beta_M_dk / (1-beta_M_dk)) * (WTH / PM_dk)^eta_VA_dk
-    ratio_MN = (par.beta_M_dk / (1.0 - par.beta_M_dk)) * (WTH / PM_dk) ** par.eta_VA_dk
-    M_dk[:] = NTH * ratio_MN   # NOTE: uses NTH as the labor input — rename to N_dk if you add N_dk as unknown
-
-    # Inner CES: split M_dk between EU- and US-sourced materials
-    # alpha_M_dk_us = share parameter on US materials
-    M_dk_us[:] = par.alpha_M_dk_us  * (PM_dk_us / PM_dk) ** (-par.eta_M_dk) * M_dk
-    M_dk_eu[:] = (1.0 - par.alpha_M_dk_us) * (PM_dk_eu / PM_dk) ** (-par.eta_M_dk) * M_dk
-
-    # Gross output from outer CES
-    rho = (par.eta_VA_dk - 1.0) / par.eta_VA_dk
-    inside_Y = (1.0 - par.beta_M_dk)**(1.0/par.eta_VA_dk) * NTH**rho + par.beta_M_dk**(1.0/par.eta_VA_dk) * M_dk**rho
-    YTH[:] = ZTH * (inside_Y ** (1.0 / rho))
-
-    #YTH[:] = ZTH*NTH
     # c. price = marginal cost
-    #PTH[:] = WTH/ZTH
-    
+    PTH[:] = WTH/ZTH
+    PNT[:] = WNT/ZNT
 
 @nb.njit
 def prices(par,ini,ss,
@@ -266,7 +166,7 @@ def prices(par,ini,ss,
     # home tradable price in foreign currencies
     PTH_eu_s[:] = PTH / E
     PTH_us_s[:] = PTH / E_us
-    # make some changes here somewhere with tariffs
+
     # b. foreign bundle price index (EU vs US)
     PF_TF[:] = price_index(PF_us, PF_eu, par.etaF_us, par.alpha_us)
 
@@ -325,9 +225,9 @@ def central_bank(par,ini,ss,pi,i,r,ra,E,i_shock,CB):
 
 @nb.njit
 def government(par,ini,ss,
-               PNT,P,wTH,NTH,wNT,NNT,ra,G,B,tau,inc_TH,inc_NT, M_dk_us, PM_dk_us, tau_m):
+               PNT,P,wTH,NTH,wNT,NNT,ra,G,B,tau,inc_TH,inc_NT):
 
-    # a. government budget # add tariff revenue to budget here somewhere
+    # a. government budget
     for t in range(par.T):
 
         tax_base = wTH[t]*NTH[t]+wNT[t]*NNT[t]
@@ -336,25 +236,13 @@ def government(par,ini,ss,
 
         #G[t] = ss.G
         tau[t] = ss.tau + par.omega*(B_lag-ss.B)/(ss.YTH+ss.YNT)
-        revenue = (tau_m[t] * PM_dk_us[t] / P[t] * M_dk_us[t]) 
-        
-        if par.tariff_rev_lumpsum:
-            B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t]-tau[t]*tax_base
-        else:
-            B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t]-tau[t]*tax_base-revenue
+
+        tax_base = wTH[t]*NTH[t]+wNT[t]*NNT[t]
+        B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t]-tau[t]*tax_base
 
     # b. household income
-
-    if par.tariff_rev_lumpsum:
-        # Mode B — revenue rebated equally per capita; split by sector size so each
-        # household gets the same per-capita amount regardless of sector
-        inc_TH[:] = (1-tau)*wTH*NTH + revenue*par.sT
-        inc_NT[:] = (1-tau)*wNT*NNT + revenue*(1.0-par.sT)
-    else:
-        inc_TH[:] = (1-tau)*wTH*NTH
-        inc_NT[:] = (1-tau)*wNT*NNT
-
-
+    inc_TH[:] = (1-tau)*wTH*NTH
+    inc_NT[:] = (1-tau)*wNT*NNT
 
 @nb.njit
 def NKWCs(par,ini,ss,beta,piWTH,piWNT,NTH,NNT,wTH,wNT,tau,UC_TH_hh,UC_NT_hh,NKWCT_res,NKWCNT_res):
@@ -426,11 +314,10 @@ def market_clearing(par,ini,ss,
 @nb.njit
 def accounting(par,ini,ss,
                PTH,YTH,PNT,YNT,P,C_hh,G,A_hh,B,ra,
-               GDP,NX,CA,NFA,Walras,
-               PM_dk, M_dk):
+               GDP,NX,CA,NFA,Walras):
     
-    GDP[:] = (PTH*YTH - PM_dk*M_dk + PNT*YNT) / P
-    NX[:] = GDP - C_hh - PNT/P*G
+    GDP[:] = (PTH*YTH+PNT*YNT)/P 
+    NX[:] = GDP-C_hh-PNT/P*G
 
     NFA[:] = A_hh-B
 

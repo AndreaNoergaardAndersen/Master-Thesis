@@ -1,6 +1,5 @@
 # find steady state
 import time
-from xml.parsers.expat import model
 import numpy as np
 from scipy import optimize
 
@@ -79,39 +78,20 @@ def evaluate_ss(model,do_print=False):
     ss.PF_eu_s = 1.0
     ss.rF_eu = par.i_eu_ss
     
-    #Production
-    ss.W_eu = 1.0
+    ss.Y_eu = ss.Z_eu * ss.N_eu
 
-    ss.PM_eu = 1.0
-    ss.PM_eu_eu = 1.0
-    ss.PM_eu_us = 1.0
-    ss.PM_eu_bundle = 1.0
+    par.varphi_eu = ss.Z_eu / (ss.N_eu**par.nu_eu * ss.C_eu**par.sigma_eu)
 
-    ss.M_eu = ss.N_eu * (par.beta_I_eu / (1.0 - par.beta_I_eu))
-    rho_eu = (par.eta_VA_eu - 1.0) / par.eta_VA_eu
-    inside_eu = (1.0 - par.beta_I_eu) * (ss.N_eu ** rho_eu) + par.beta_I_eu * (ss.M_eu ** rho_eu)
-    ss.Y_eu = ss.Z_eu * (inside_eu ** (1.0 / rho_eu))
+    ss.W_eu = ss.PF_eu_s*ss.Z_eu
+    
 
-    pow_eu = 1.0 - par.eta_VA_eu
-    ss.mc_eu = (1.0 / ss.Z_eu) * (((1.0 - par.beta_I_eu) * (ss.W_eu ** pow_eu) + par.beta_I_eu * (ss.PM_eu_bundle ** pow_eu)) ** (1.0 / pow_eu))
-
-    # Foreign materials by source
-    #M_eu_us = par.alpha_I_eu_us * ss.M_eu
-    #M_eu_eu = (1.0 - par.alpha_I_eu_us) * ss.M_eu
-
-    par.varphi_eu = (ss.W_eu / ss.PF_eu_s) * ss.C_eu**(-par.sigma_eu) / (ss.N_eu**par.nu_eu)
-
-    # tarrifs 
-    ss.tau_m = 0.0
-    ss.tau_x = 0.0
-
+    
     #EU NK residuals in SS
     ss.eu_Euler_res=0.0
     ss.eu_LS_res=0.0
     ss.eu_NKPC_res=0.0
     ss.eu_TR_res=0.0
     ss.eu_RC_res=0.0
-    ss.FOC_I_eu_res = 0.0
 
     ss.i_shock_eu = 0.0
 
@@ -124,28 +104,11 @@ def evaluate_ss(model,do_print=False):
     ss.PF_us_s = 1.0
     ss.rF_us = par.i_us_ss
     
+    ss.Y_us = ss.Z_us * ss.N_us
 
-    #Production
-    ss.W_us = 1.0
+    par.varphi_us = ss.Z_us / (ss.N_us**par.nu_us * ss.C_us**par.sigma_us)
 
-    ss.PM_us = 1.0
-    ss.PM_us_eu = 1.0
-    ss.PM_us_us = 1.0
-    ss.PM_us_bundle = 1.0
-
-    ss.M_us = ss.N_us * (par.beta_I_us / (1.0 - par.beta_I_us))
-    rho_us = (par.eta_VA_us - 1.0) / par.eta_VA_us
-    inside_us = (1.0 - par.beta_I_us) * (ss.N_us ** rho_us) + par.beta_I_us * (ss.M_us ** rho_us)
-    ss.Y_us = ss.Z_us * (inside_us ** (1.0 / rho_us))
-
-    pow_us = 1.0 - par.eta_VA_us
-    ss.mc_us = (1.0 / ss.Z_us) * (((1.0 - par.beta_I_us) * (ss.W_us ** pow_us) + par.beta_I_us * (ss.PM_us_bundle ** pow_us)) ** (1.0 / pow_us))
-
-    # Foreign materials by source
-    #M_us_us = par.alpha_I_us_eu * ss.M_us
-    #M_us_eu = (1.0 - par.alpha_I_us_eu) * ss.M_us
-
-    par.varphi_us = (ss.W_us / ss.PF_us_s) * ss.C_us**(-par.sigma_us) / (ss.N_us**par.nu_us)
+    ss.W_us = ss.PF_us_s*ss.Z_us
 
     #US NK residuals in SS
     ss.us_Euler_res=0.0
@@ -153,7 +116,6 @@ def evaluate_ss(model,do_print=False):
     ss.us_NKPC_res=0.0
     ss.us_TR_res=0.0
     ss.us_RC_res=0.0
-    ss.FOC_I_us_res = 0.0
 
     ss.i_shock_us = 0.0
 
@@ -164,9 +126,6 @@ def evaluate_ss(model,do_print=False):
     for varname in ['PF_eu_s', 'E','PTH_eu_s','Q', 'PF_eu', #EU
                 'Q_us', 'PF_us_s','E_us','PF_us','PTH_us_s', 'CB_us', #US
                 'PF_TF', 'PTH','PT','PNT','P', #General
-                'PM_eu', 'PM_us', 'PM', 'MC_TH',
-                'PM_eu_eu', 'PM_eu_us', 'PM_eu_bundle',
-                'PM_us_eu', 'PM_us_us', 'PM_us_bundle' #Materials
                 ]:
         ss.__dict__[varname] = 1.0
     
@@ -196,45 +155,14 @@ def evaluate_ss(model,do_print=False):
     ss.ZNT = 1.0
     ss.NTH = 1.0*par.sT
     ss.NNT = 1.0*(1-par.sT)
+    
+    # production
+    ss.YTH = ss.ZTH*ss.NTH
+    ss.YNT = ss.ZNT*ss.NNT
 
-    ss.WTH=1.0
-    ss.WNT=1.0
-
-    # implied materials quantity from FOC at SS prices
-    ss.I_TH = ss.NTH * (par.beta_I / (1.0 - par.beta_I))  # since WTH=PM=1
-    # Danish materials by source
-    #ss.M_TH_us = par.alpha_I_us * ss.M_TH
-    #ss.M_TH_eu = (1.0 - par.alpha_I_us) * ss.M_TH
-
-    # implied tradable output from CES production
-    rho = (par.eta_VA - 1.0) / par.eta_VA
-    inside = (1.0 - par.beta_I) * (ss.NTH ** rho) + par.beta_I * (ss.I_TH ** rho)
-    ss.YTH = ss.ZTH * (inside ** (1.0 / rho))
-
-    # unit cost / price of tradables in SS
-    ss.MC_TH = (1.0 / ss.ZTH) * (((1.0 - par.beta_I) * (ss.WTH ** (1.0 - par.eta_VA)) + par.beta_I * (ss.PM ** (1.0 - par.eta_VA))) ** (1.0 / (1.0 - par.eta_VA)))
-    ss.PTH = ss.MC_TH
-
-    # non-tradable output
-    ss.YNT = ss.ZNT * ss.NNT
-
-    # unit cost in SS (given WTH=1, PM=1, ZTH=1)
-    pow_ = 1.0 - par.eta_VA
-    ss.MC_TH = (1.0 / ss.ZTH) * (((1.0 - par.beta_I) * (ss.WTH ** pow_) +
-                              par.beta_I * (ss.PM ** pow_)) ** (1.0 / pow_))
-
-    # perfect competition: PTH = MC_TH
-    ss.PTH = ss.MC_TH
-
-    # real wages (since P=1)
-    ss.wTH = ss.WTH / ss.P
-    ss.wNT = ss.WNT / ss.P
-
-    # price of non-tradable consistent with wage and productivity
-    ss.PNT = ss.WNT / ss.ZNT
-
-    # FOC residual zero by construction
-    ss.FOC_I_TH_res = 0.0
+    # real = nominal wages = value of mpl
+    ss.wTH = ss.WTH = ss.PTH*ss.ZTH
+    ss.wNT = ss.WNT = ss.PNT*ss.ZNT
     
     # c. household 
     ss.tau = par.tau_ss
@@ -253,6 +181,7 @@ def evaluate_ss(model,do_print=False):
         ss.CB = ss.E 
     else:
         ss.CB = ss.i
+    
     ss.CB_us=ss.E_us
     
     # e. consumption
@@ -275,7 +204,7 @@ def evaluate_ss(model,do_print=False):
     # Total exports of DK tradable good
     X_tot = ss.YTH - ss.CTH
 
-    # Split across EU and US
+    # Export split across EU and US
     ss.CTH_eu_s = (1-par.share_X_us) * X_tot
     ss.CTH_us_s = par.share_X_us * X_tot
 

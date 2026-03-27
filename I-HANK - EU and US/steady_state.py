@@ -75,16 +75,7 @@ def evaluate_ss(model,do_print=False):
     ss.mc_eu = 1.0
     ss.i_eu = par.i_eu_ss
     ss.Z_eu = 1.0
-    ss.PF_eu_s = 1.0
     ss.rF_eu = par.i_eu_ss
-    
-    ss.Y_eu = ss.Z_eu * ss.N_eu
-
-    par.varphi_eu = ss.Z_eu / (ss.N_eu**par.nu_eu * ss.C_eu**par.sigma_eu)
-
-    ss.W_eu = ss.PF_eu_s*ss.Z_eu
-    
-
     
     #EU NK residuals in SS
     ss.eu_Euler_res=0.0
@@ -101,14 +92,7 @@ def evaluate_ss(model,do_print=False):
     ss.mc_us = 1.0
     ss.i_us = par.i_us_ss
     ss.Z_us = 1.0
-    ss.PF_us_s = 1.0
     ss.rF_us = par.i_us_ss
-    
-    ss.Y_us = ss.Z_us * ss.N_us
-
-    par.varphi_us = ss.Z_us / (ss.N_us**par.nu_us * ss.C_us**par.sigma_us)
-
-    ss.W_us = ss.PF_us_s*ss.Z_us
 
     #US NK residuals in SS
     ss.us_Euler_res=0.0
@@ -120,21 +104,23 @@ def evaluate_ss(model,do_print=False):
     ss.i_shock_us = 0.0
 
     # normalzied to 1
-    #for varname in ['PF_eu_s','E', 'PF','PTH','PT','PNT','P','PTH_eu_s','Q']:
-    #    ss.__dict__[varname] = 1.0
-
-    for varname in ['PF_eu_s', 'E','PTH_eu_s','Q', 'PF_eu', #EU
-                'Q_us', 'PF_us_s','E_us','PF_us','PTH_us_s', 'CB_us', #US
+#    for varname in ['PF_eu_s', 'E','PTH_eu_s','Q', 'PF_eu', #EU
+#                'Q_us', 'PF_us_s','E_us','PF_us','PTH_us_s', 'CB_us', #US
+#                'PF_TF', 'PTH','PT','PNT','P', #General
+#                ]:
+#        ss.__dict__[varname] = 1.0
+    for varname in ['PF_eu_s', 'E','PTH_eu_s','Q', 'PF_eu',#EU
+                'Q_us', 'PF_us_s','E_us','PF_us','PTH_us_s', 'CB_us',  #US
                 'PF_TF', 'PTH','PT','PNT','P', #General
+                'PM_eu_eu', 'PM_eu_us','PM_eu','M_eu','M_eu_eu','M_eu_us', #EU materials
+                'PM_us_us', 'PM_us_eu','PM_us','M_us','M_us_eu','M_us_us', #US materials
+                'PM_dk_eu', 'PM_dk_us','PM_dk','M_dk','M_dk_eu','M_dk_us'  #DK materials
                 ]:
         ss.__dict__[varname] = 1.0
     
     # zero inflation
-#    for varname in ['pi_F_eu_s','pi_F','pi_TH','pi_T','pi_NT','pi','pi_TH_eu_s','piWTH','piWNT','x_eu','pi_eu']:
-#        ss.__dict__[varname] = 0.0
-    
-    for varname in ['pi_F_eu_s','pi_F_eu','pi_TH_eu_s','pi_eu', #EU
-                    'pi_F_us_s','pi_F_us','pi_TH_us_s','pi_us', #US
+    for varname in ['pi_F_eu_s','pi_F_eu','pi_TH_eu_s','pi_eu', 'piM_eu_eu', #EU
+                    'pi_F_us_s','pi_F_us','pi_TH_us_s','pi_us', 'piM_us_us', #US
                     'pi_FF','pi_TH','pi_T','pi_NT','pi','piWTH','piWNT' #General
                     ]:
         ss.__dict__[varname] = 0.0
@@ -148,22 +134,69 @@ def evaluate_ss(model,do_print=False):
     # domestic interes rate shock:
     ss.i_shock = 0.0
 
+    # tarrifs 
+    ss.tau_m = 0.0
+    ss.tau_x = 0.0
+
+    # EU materials steady state (nested CES in production)
+    ss.PM_eu_us = ss.PM_us_us * ss.E_us / ss.E
+    ss.PM_eu = blocks.price_index(ss.PM_eu_us, ss.PM_eu_eu, par.eta_M_eu, par.alpha_M_eu_us)
+    
+    
+    ss.W_eu = ss.PF_eu_s
+    ss.M_eu = ss.N_eu * (par.beta_M_eu / (1.0 - par.beta_M_eu)) * ((ss.W_eu/ss.PF_eu_s) / (ss.PM_eu/ss.PF_eu_s))**par.eta_VA_eu
+    ss.M_eu_us = par.alpha_M_eu_us * (ss.PM_eu_us / ss.PM_eu)**(-par.eta_M_eu) * ss.M_eu
+    ss.M_eu_eu = (1.0 - par.alpha_M_eu_us) * (ss.PM_eu_eu / ss.PM_eu)**(-par.eta_M_eu) * ss.M_eu
+    rho_eu = (par.eta_VA_eu - 1.0) / par.eta_VA_eu
+    ss.Y_eu = ss.Z_eu * (((1.0 - par.beta_M_eu)**(1.0/par.eta_VA_eu) * ss.N_eu**rho_eu + par.beta_M_eu**(1.0/par.eta_VA_eu) * ss.M_eu**rho_eu) ** (1.0 / rho_eu))
+    ss.C_eu = ss.Y_eu - (ss.PM_eu / ss.PF_eu_s) * ss.M_eu
+    par.varphi_eu = (ss.W_eu / ss.PF_eu_s) * ss.C_eu**(-par.sigma_eu) / (ss.N_eu**par.nu_eu)
+
+    # US materials steady state (nested CES in production)
+    ss.PM_us_eu = ss.PM_eu_eu * ss.E / ss.E_us
+    ss.PM_us = blocks.price_index(ss.PM_us_us, ss.PM_us_eu, par.eta_M_us, par.alpha_M_us_us)
+    ss.W_us = ss.PF_us_s
+    ss.M_us = ss.N_us * (par.beta_M_us / (1.0 - par.beta_M_us)) * ((ss.W_us/ss.PF_us_s) / (ss.PM_us/ss.PF_us_s))**par.eta_VA_us
+    ss.M_us_us = par.alpha_M_us_us * (ss.PM_us_us / ss.PM_us)**(-par.eta_M_us) * ss.M_us
+    ss.M_us_eu = (1.0 - par.alpha_M_us_us) * (ss.PM_us_eu / ss.PM_us)**(-par.eta_M_us) * ss.M_us
+    rho_us = (par.eta_VA_us - 1.0) / par.eta_VA_us
+    ss.Y_us = ss.Z_us * (((1.0 - par.beta_M_us)**(1.0/par.eta_VA_us) * ss.N_us**rho_us + par.beta_M_us**(1.0/par.eta_VA_us) * ss.M_us**rho_us) ** (1.0 / rho_us))
+    ss.C_us = ss.Y_us - (ss.PM_us / ss.PF_us_s) * ss.M_us
+    par.varphi_us = (ss.W_us / ss.PF_us_s) * ss.C_us**(-par.sigma_us) / (ss.N_us**par.nu_us)
+
     # b. production
+
+    #Non-tradable sector
+    ss.ZNT = 1.0
+    ss.NNT = 1.0*(1-par.sT)
+    ss.YNT = ss.ZNT*ss.NNT
+    ss.wNT = ss.WNT = ss.PNT*ss.ZNT
 
     # normalize TFP and labor
     ss.ZTH = 1.0
-    ss.ZNT = 1.0
     ss.NTH = 1.0*par.sT
-    ss.NNT = 1.0*(1-par.sT)
-    
     # production
-    ss.YTH = ss.ZTH*ss.NTH
-    ss.YNT = ss.ZNT*ss.NNT
+    #ss.YTH = ss.ZTH*ss.NTH
+    #ss.wTH = ss.WTH = ss.PTH*ss.ZTH
+    
+    #DK materials steady state (nested CES in production)
+    ss.PM_dk_eu = ss.PM_eu_eu * ss.E
+    ss.PM_dk_us = ss.PM_us_us * ss.E_us
+    ss.PM_dk = blocks.price_index(ss.PM_dk_us, ss.PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us)
 
     # real = nominal wages = value of mpl
-    ss.wTH = ss.WTH = ss.PTH*ss.ZTH
-    ss.wNT = ss.WNT = ss.PNT*ss.ZNT
-    
+    pow_dk = 1.0 - par.eta_VA_dk
+    rhs = ((ss.PTH * ss.ZTH)**pow_dk - par.beta_M_dk * ss.PM_dk**pow_dk) / (1.0 - par.beta_M_dk)
+    ss.WTH = rhs ** (1.0 / pow_dk)        # nominal wage from unit-cost inversion
+    ss.wTH = ss.WTH / ss.P                # real wage (= WTH since P = 1 in SS)
+
+    ss.M_dk = ss.NTH * (par.beta_M_dk / (1.0 - par.beta_M_dk)) * ((ss.WTH/ss.PTH) / (ss.PM_dk/ss.PTH))**par.eta_VA_dk
+    ss.M_dk_us = par.alpha_M_dk_us * (ss.PM_dk_us / ss.PM_dk)**(-par.eta_M_dk) * ss.M_dk
+    ss.M_dk_eu = (1.0 - par.alpha_M_dk_us) * (ss.PM_dk_eu / ss.PM_dk)**(-par.eta_M_dk) * ss.M_dk
+
+    rho_dk = (par.eta_VA_dk - 1.0) / par.eta_VA_dk
+    ss.YTH = ss.ZTH * (((1.0 - par.beta_M_dk)**(1.0/par.eta_VA_dk) * ss.NTH**rho_dk + par.beta_M_dk**(1.0/par.eta_VA_dk) * ss.M_dk**rho_dk) ** (1.0 / rho_dk))
+
     # c. household 
     ss.tau = par.tau_ss
     ss.inc_TH = (1-ss.tau)*ss.wTH*ss.NTH
@@ -223,7 +256,7 @@ def evaluate_ss(model,do_print=False):
     ss.NFA = ss.A_hh - ss.B
 
     # zero net foreign assets
-    ss.GDP = ss.YTH + ss.YNT
+    ss.GDP = ss.YTH - ss.PM_dk*ss.M_dk/ss.P + ss.YNT
     ss.NX = ss.GDP - ss.C_hh - ss.G
     ss.NFA = ss.A_hh - ss.B
     ss.CA = ss.NX + ss.ra*ss.NFA
@@ -232,6 +265,7 @@ def evaluate_ss(model,do_print=False):
     # g. disutility of labor for NKWPCs
     par.varphiTH = 1/par.muw*(1-ss.tau)*ss.wTH*ss.UC_TH_hh / ((ss.NTH/par.sT)**par.nu)
     par.varphiNT = 1/par.muw*(1-ss.tau)*ss.wNT*ss.UC_NT_hh / ((ss.NNT/(1-par.sT))**par.nu)
+
     ss.NKWCT_res = 0.0
     ss.NKWCNT_res = 0.0
 
