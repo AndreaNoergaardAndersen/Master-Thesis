@@ -31,7 +31,9 @@ class IHANKModelClass(EconModelClass,GEModelClass):
                        'beta','G', #Domestic preference and fiscal shocks
                        'i_shock', #domestic monetary shock (keep at zero under peg)
                        'i_shock_eu', 'Z_eu', # EU monetary shocks and foreign TFP
-                       'i_shock_us', 'Z_us'] # US monetary shocks and foreign TFP
+                       'i_shock_us', 'Z_us', # US monetary shocks and foreign TFP
+                       'tau_x',  # US initial tariff on DK+EA exports (raises price of DK/EA goods in US market)
+                       'tau_m']  # DK+EA retaliatory tariff on US-origin materials (EU sets external trade policy for DK)
         self.unknowns = ['CB','NNT','NTH','piWTH','piWNT', 'CB_us', #original # endogenous inputs
                          'C_eu', 'N_eu', 'pi_eu', 'i_eu', 'M_eu', #EU
                          'C_us', 'N_us', 'pi_us', 'i_us', 'M_us', #US
@@ -169,6 +171,18 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.Na = 500 # number of grid points
 
         # i. shocks
+        # Tariff parameters
+        #par.tau_m = 0.0          # Materials tariff (DK/EA retaliation)
+        #par.tau_x = 0.0          # Export tariff (US initial)
+        par.jump_tau_m = 0.0     # Jump size for tau_m shock
+        par.rho_tau_m = 0.00     # Persistence of tau_m
+        par.std_tau_m = 0.00    # std.
+        
+        par.jump_tau_x = 0.0     # Jump size for tau_m shock
+        par.rho_tau_x = 0.00     # Persistence of tau_m
+        par.std_tau_x = 0.00    # std.
+        par.tariff_rev_lumpsum = False  # Revenue allocation mode
+
         par.jump_beta = 0.00 # initial jump
         par.rho_beta = 0.00 # AR(1) coefficeint
         par.std_beta = 0.00 # std.
@@ -191,6 +205,28 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.rho_i_shock_us = 0.00
         par.std_i_shock_us = 0.00
 
+        # Tariff shocks (tariff war: US initiates, DK/EA retaliates)
+        # tau_x: US initial tariff on DK+EA exports — raises effective price of DK/EA goods in US market
+        par.jump_tau_x = 0.00  # initial tariff rate (e.g. 0.25 = 25%)
+        par.rho_tau_x  = 0.95  # AR(1) persistence — > 0.9 gives very persistent ("permanent") tariff
+        par.std_tau_x  = 0.00  # std for stochastic simulations
+
+        # tau_m: DK+EA retaliatory tariff on US-origin materials — enters as (1+tau_m) wedge on PM_us
+        # EU sets external trade policy for all members, so DK and EU face same tariff rate
+        par.jump_tau_m = 0.00  # retaliatory tariff rate
+        par.rho_tau_m  = 0.95  # AR(1) persistence
+        par.std_tau_m  = 0.00  # std for stochastic simulations
+
+        # tau_g: optional tariff on US consumption goods imported by DK households (set to 0 to disable)
+        # This is a parameter, not a shock — can be set permanently if desired
+        par.tau_g = 0.00
+
+        # Revenue toggle:
+        # False (default) — tariff revenue reduces govt debt; fiscal rule then lowers taxes over time
+        # True            — tariff revenue rebated lump-sum to households (equal per capita);
+        #                   isolates the pure price/substitution channel of tariffs
+        par.tariff_rev_lumpsum = False
+
         # j. misc.
         par.T = 500 # length of path        
         
@@ -211,6 +247,10 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         par = self.par
         self.allocate_GE()
+         
+        # Initialize tariff paths
+        self.path.tau_m = np.zeros(par.T)
+        self.path.tau_x = np.zeros(par.T)
 
     prepare_hh_ss = steady_state.prepare_hh_ss
     find_ss = steady_state.find_ss        

@@ -44,6 +44,7 @@ def mon_pol(par,ini,ss,E,CB, E_us, CB_us):
 def materials_prices(par, ini, ss,
                    pi_eu, pi_us, E, E_us,
                    PF_eu_s, PF_us_s,
+                   tau_m,  # tariff shock: DK+EA tariff rate on US-origin materials
                    PM_eu, PM_us, PM,
                    PM_eu_eu, PM_eu_us, PM_eu_bundle,
                    PM_us_eu, PM_us_us, PM_us_bundle
@@ -54,16 +55,18 @@ def materials_prices(par, ini, ss,
     price_from_inflation(PF_us_s, pi_us, par.T, ss.PF_us_s)
 
     # Danish materials prices in DKK
-    PM_eu[:] = PF_eu_s * E
-    PM_us[:] = PF_us_s * E_us
+    # tau_m enters as a (1+tau_m) wedge on US-origin materials — DK/EA bloc imposes tariff on US
+    PM_eu[:] = PF_eu_s * E                              # EU materials: no tariff (same bloc)
+    PM_us[:] = PF_us_s * E_us * (1.0 + tau_m)          # US materials: tariff wedge applied
     PM[:] = price_index(PM_us, PM_eu, par.eta_I, par.alpha_I_us)
 
     # EU materials bundle prices in EUR
-    PM_eu_eu[:] = PF_eu_s
-    PM_eu_us[:] = PF_us_s * E_us / E
+    # EU also faces the (1+tau_m) tariff on US-origin materials (EU sets external trade policy for DK)
+    PM_eu_eu[:] = PF_eu_s                               # EU domestic materials: no tariff
+    PM_eu_us[:] = PF_us_s * E_us / E * (1.0 + tau_m)  # US materials into EU: tariff wedge applied
     PM_eu_bundle[:] = price_index(PM_eu_us, PM_eu_eu, par.eta_I_eu, par.alpha_I_eu_us)
 
-    # US materials bundle prices in USD
+    # US materials bundle prices in USD (US is not part of the DK/EA bloc — no tariff on EU materials)
     PM_us_eu[:] = PF_eu_s * E / E_us
     PM_us_us[:] = PF_us_s
     PM_us_bundle[:] = price_index(PM_us_eu, PM_us_us, par.eta_I_us, par.alpha_I_us_eu)
@@ -247,8 +250,9 @@ def prices(par,ini,ss,
            PF_eu, PF_us, PF_TF, PTH_eu_s, PTH_us_s, PT, P, Q, Q_us, wTH, wNT):
 
     # a. convert currency: foreign prices in DKK
+    # par.tau_g is an optional tariff on US consumption goods (set to 0.0 to disable)
     PF_eu[:] = PF_eu_s * E
-    PF_us[:] = PF_us_s * E_us
+    PF_us[:] = PF_us_s * E_us * (1.0 + par.tau_g)
 
     # home tradable price in foreign currencies
     PTH_eu_s[:] = PTH / E
@@ -312,24 +316,44 @@ def central_bank(par,ini,ss,pi,i,r,ra,E,i_shock,CB):
 
 @nb.njit
 def government(par,ini,ss,
-               PNT,P,wTH,NTH,wNT,NNT,ra,G,B,tau,inc_TH,inc_NT):
+               PNT,P,wTH,NTH,wNT,NNT,ra,G,B,tau,inc_TH,inc_NT,
+               tau_m, PM_us, PM, I_TH):  # extra inputs for tariff revenue calculation
 
     # a. government budget
     for t in range(par.T):
 
-        tax_base = wTH[t]*NTH[t]+wNT[t]*NNT[t]
-        
         B_lag = prev(B,t,ini.B)
-
-        #G[t] = ss.G
         tau[t] = ss.tau + par.omega*(B_lag-ss.B)/(ss.YTH+ss.YNT)
-
         tax_base = wTH[t]*NTH[t]+wNT[t]*NNT[t]
-        B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t]-tau[t]*tax_base
 
-    # b. household income
-    inc_TH[:] = (1-tau)*wTH*NTH
-    inc_NT[:] = (1-tau)*wNT*NNT
+        # Tariff revenue (DK): CES Armington demand gives quantity of US-origin materials
+        # I_TH_us = alpha * (PM_us/PM)^(-eta) * I_TH  (Armington demand for US materials)
+        # T_rev   = (tau/(1+tau)) * PM_us * I_TH_us / P  (real revenue = pre-tariff price * qty * rate)
+        I_TH_us = par.alpha_I_us * (PM_us[t] / PM[t])**(-par.eta_I) * I_TH[t]
+        T_rev = (tau_m[t] / (1.0 + tau_m[t])) * PM_us[t] * I_TH_us / P[t]
+
+        if par.tariff_rev_lumpsum:
+            # Mode B — lump-sum rebate: revenue not retained by government
+            B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t] - tau[t]*tax_base
+        else:
+            # Mode A (default) — fiscal rule: revenue reduces govt debt;
+            # fiscal rule then lowers labour taxes (tau) over time to restore steady state
+            B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t] - tau[t]*tax_base - T_rev
+
+    # b. household income — vectorised assignment (matching original pattern)
+    # Recompute T_rev as full vector here so we can add it to inc in lump-sum mode
+    I_TH_us_vec = par.alpha_I_us * (PM_us / PM)**(-par.eta_I) * I_TH
+    T_rev_vec = (tau_m / (1.0 + tau_m)) * PM_us * I_TH_us_vec / P
+
+    if par.tariff_rev_lumpsum:
+        # Mode B — revenue rebated equally per capita; split by sector size so each
+        # household gets the same per-capita amount regardless of sector
+        inc_TH[:] = (1-tau)*wTH*NTH + T_rev_vec*par.sT
+        inc_NT[:] = (1-tau)*wNT*NNT + T_rev_vec*(1.0-par.sT)
+    else:
+        # Mode A — income unaffected; revenue already subtracted from B above
+        inc_TH[:] = (1-tau)*wTH*NTH
+        inc_NT[:] = (1-tau)*wNT*NNT
 
 @nb.njit
 def NKWCs(par,ini,ss,beta,piWTH,piWNT,NTH,NNT,wTH,wNT,tau,UC_TH_hh,UC_NT_hh,NKWCT_res,NKWCNT_res):
@@ -372,6 +396,7 @@ def consumption(par,ini,ss,
                 C_hh, PT, PNT, P, PTH,
                 PF_TF, PF_eu, PF_us,
                 M_eu_s, M_us_s, PTH_eu_s, PTH_us_s, PF_eu_s, PF_us_s,
+                tau_x,  # tariff shock: US initial tariff rate on DK+EA exports
                 CT, CNT, CTF, CTF_eu, CTF_us, CTH, CTH_eu_s, CTH_us_s):
 
     # a. tradeable vs non-tradeable
@@ -387,8 +412,10 @@ def consumption(par,ini,ss,
     CTF_eu[:] = (1-par.alpha_us)*(PF_eu/PF_TF)**(-par.etaF_us)*CTF
 
     # d. foreign demand for DK tradables (exports)
+    # tau_x: US tariff raises the effective price of DK goods in the US market,
+    # reducing US import demand via the Armington elasticity
     CTH_eu_s[:] = (PTH_eu_s/PF_eu_s)**(-par.eta_s)*M_eu_s
-    CTH_us_s[:] = (PTH_us_s/PF_us_s)**(-par.eta_s)*M_us_s
+    CTH_us_s[:] = (PTH_us_s*(1.0+tau_x)/PF_us_s)**(-par.eta_s)*M_us_s
 
 @nb.njit
 def market_clearing(par,ini,ss,

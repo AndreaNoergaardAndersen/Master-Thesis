@@ -1,5 +1,6 @@
 # find steady state
 import time
+from xml.parsers.expat import model
 import numpy as np
 from scipy import optimize
 
@@ -78,7 +79,6 @@ def evaluate_ss(model,do_print=False):
     ss.PF_eu_s = 1.0
     ss.rF_eu = par.i_eu_ss
     
-
     #Production
     ss.W_eu = 1.0
 
@@ -101,10 +101,10 @@ def evaluate_ss(model,do_print=False):
 
     par.varphi_eu = (ss.W_eu / ss.PF_eu_s) * ss.C_eu**(-par.sigma_eu) / (ss.N_eu**par.nu_eu)
 
-    
-    
+    # tarrifs 
+    ss.tau_m = 0.0
+    ss.tau_x = 0.0
 
-    
     #EU NK residuals in SS
     ss.eu_Euler_res=0.0
     ss.eu_LS_res=0.0
