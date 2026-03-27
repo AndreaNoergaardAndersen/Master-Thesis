@@ -172,8 +172,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         # i. shocks
         # Tariff parameters
-        #par.tau_m = 0.0          # Materials tariff (DK/EA retaliation)
-        #par.tau_x = 0.0          # Export tariff (US initial)
+        
         par.jump_tau_m = 0.0     # Jump size for tau_m shock
         par.rho_tau_m = 0.00     # Persistence of tau_m
         par.std_tau_m = 0.00    # std.

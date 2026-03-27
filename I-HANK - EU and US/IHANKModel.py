@@ -31,7 +31,9 @@ class IHANKModelClass(EconModelClass,GEModelClass):
                        'beta','G', #Domestic preference and fiscal shocks
                        'i_shock', #domestic monetary shock (keep at zero under peg)
                        'i_shock_eu', 'Z_eu', 'piM_eu_eu', # EU natural-rate, monetary shocks and foreign TFP
-                       'i_shock_us', 'Z_us', 'piM_us_us'] # US natural-rate, monetary shocks and foreign TFP
+                       'i_shock_us', 'Z_us', 'piM_us_us', # US natural-rate, monetary shocks and foreign TFP
+                       'tau_x',  # US initial tariff on DK+EA exports (raises price of DK/EA goods in US market)
+                       'tau_m']  # DK+EA retaliatory tariff on US-origin materials (EU sets external trade policy for DK)
         self.unknowns = ['CB','NNT','NTH','piWTH','piWNT', 'CB_us', #original # endogenous inputs
                          'C_eu', 'N_eu', 'pi_eu', 'i_eu', 'mc_eu', #EU
                          'C_us', 'N_us', 'pi_us', 'i_us', 'mc_us'] #US 
@@ -167,6 +169,17 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.Na = 500 # number of grid points #SÆT TIL 500 IGEN
 
         # h. shocks
+        # Tariff parameters
+        
+        par.jump_tau_m = 0.0     # Jump size for tau_m shock
+        par.rho_tau_m = 0.00     # Persistence of tau_m
+        par.std_tau_m = 0.00    # std.
+        
+        par.jump_tau_x = 0.0     # Jump size for tau_m shock
+        par.rho_tau_x = 0.00     # Persistence of tau_m
+        par.std_tau_x = 0.00    # std.
+        par.tariff_rev_lumpsum = False  # Revenue allocation mode
+
         par.jump_beta = 0.00 # initial jump
         par.rho_beta = 0.00 # AR(1) coefficeint
         par.std_beta = 0.00 # std.

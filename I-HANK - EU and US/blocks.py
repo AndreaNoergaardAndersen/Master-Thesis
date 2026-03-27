@@ -45,7 +45,7 @@ def material_prices(par, ini, ss,
                        piM_eu_eu, piM_us_us,
                        E, E_us,
                        PM_eu_eu, PM_us_us, PM_eu_us, PM_eu, PM_us_eu, PM_us,
-                       PM_dk_eu, PM_dk_us, PM_dk
+                       PM_dk_eu, PM_dk_us, PM_dk, tau_m, tau_x
                        ):
     """
     Separate material-input prices for the EU production block.
@@ -58,10 +58,11 @@ def material_prices(par, ini, ss,
     price_from_inflation(PM_us_us, piM_us_us, par.T, ss.PM_us_us)
 
     # convert to EUR
-    PM_eu_us[:] = PM_us_us * E_us / E # add tariff somewhere around here
+    PM_eu_us[:] = (1.0 + tau_m) * PM_us_us * E_us / E # add tariff somewhere around here
+
 
     # convert to USD for US production block    
-    PM_us_eu[:] = PM_eu_eu * E / E_us
+    PM_us_eu[:] = (1.0 + tau_x) * PM_eu_eu * E / E_us
 
     # inner CES price index
     PM_eu[:] = price_index(PM_eu_us, PM_eu_eu, par.eta_M_eu, par.alpha_M_eu_us)
@@ -71,7 +72,7 @@ def material_prices(par, ini, ss,
 
     #DK materials price index for production
     PM_dk_eu[:] = PM_eu_eu * E
-    PM_dk_us[:] = PM_us_us * E_us
+    PM_dk_us[:] = (1.0 + tau_m) *PM_us_us * E_us
     PM_dk[:] = price_index(PM_dk_us, PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us)
 
 @nb.njit
@@ -324,7 +325,7 @@ def central_bank(par,ini,ss,pi,i,r,ra,E,i_shock,CB):
 
 @nb.njit
 def government(par,ini,ss,
-               PNT,P,wTH,NTH,wNT,NNT,ra,G,B,tau,inc_TH,inc_NT):
+               PNT,P,wTH,NTH,wNT,NNT,ra,G,B,tau,inc_TH,inc_NT, M_dk_us, PM_dk_us, tau_m):
 
     # a. government budget # add tariff revenue to budget here somewhere
     for t in range(par.T):
@@ -335,13 +336,25 @@ def government(par,ini,ss,
 
         #G[t] = ss.G
         tau[t] = ss.tau + par.omega*(B_lag-ss.B)/(ss.YTH+ss.YNT)
-
-        tax_base = wTH[t]*NTH[t]+wNT[t]*NNT[t]
-        B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t]-tau[t]*tax_base
+        revenue = (tau_m[t] * PM_dk_us[t] / P[t] * M_dk_us[t]) 
+        
+        if par.tariff_rev_lumpsum:
+            B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t]-tau[t]*tax_base
+        else:
+            B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t]-tau[t]*tax_base-revenue
 
     # b. household income
-    inc_TH[:] = (1-tau)*wTH*NTH
-    inc_NT[:] = (1-tau)*wNT*NNT
+
+    if par.tariff_rev_lumpsum:
+        # Mode B — revenue rebated equally per capita; split by sector size so each
+        # household gets the same per-capita amount regardless of sector
+        inc_TH[:] = (1-tau)*wTH*NTH + revenue*par.sT
+        inc_NT[:] = (1-tau)*wNT*NNT + revenue*(1.0-par.sT)
+    else:
+        inc_TH[:] = (1-tau)*wTH*NTH
+        inc_NT[:] = (1-tau)*wNT*NNT
+
+
 
 @nb.njit
 def NKWCs(par,ini,ss,beta,piWTH,piWNT,NTH,NNT,wTH,wNT,tau,UC_TH_hh,UC_NT_hh,NKWCT_res,NKWCNT_res):

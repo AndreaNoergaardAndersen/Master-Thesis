@@ -134,6 +134,10 @@ def evaluate_ss(model,do_print=False):
     # domestic interes rate shock:
     ss.i_shock = 0.0
 
+    # tarrifs 
+    ss.tau_m = 0.0
+    ss.tau_x = 0.0
+
     # EU materials steady state (nested CES in production)
     ss.PM_eu_us = ss.PM_us_us * ss.E_us / ss.E
     ss.PM_eu = blocks.price_index(ss.PM_eu_us, ss.PM_eu_eu, par.eta_M_eu, par.alpha_M_eu_us)
