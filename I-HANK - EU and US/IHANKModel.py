@@ -92,7 +92,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.etaT = 2.0       # T vs NT substitution elasticity
 
         par.alphaF = 1/3     # foreign share inside tradeable bundle
-        par.alpha_us = 0.5   # US share inside foreign tradeable bundle
+        par.alpha_us = 0.05   # US share inside foreign tradeable bundle
 
         par.etaF = 2.0       # home vs foreign substitution elasticity
         par.etaF_us = 2.0    # EU vs US substitution elasticity
@@ -124,7 +124,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.eta_M_dk = 1.50         # inner CES elasticity (EU vs US materials), shared
 
         # e. foreign economy
-        par.share_X_us = 0.5  # share of DK exports going to US in SS
+        par.share_X_us = 0.1  # share of DK exports going to US in SS
         par.eta_s = 2.0       # Armington elasticity of foreign demand
 
         # EU economy

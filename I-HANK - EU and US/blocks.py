@@ -228,7 +228,7 @@ def prices(par, ini, ss,
            PF_eu_s, PF_us_s, E, E_us,
            PHH, PHL, PNT, WHH, WHL, WNT,
            PF_eu, PF_us, PF_TF, PTH, PTH_eu_s, PTH_us_s, PT, P, Q, Q_us,
-           wHH, wHL, wNT):
+           wHH, wHL, wNT, tau_m, tau_x):
     """
     Price indices and real exchange rates.
     PTH = flat CES aggregate of the two home tradeable sector prices PHH and PHL.
@@ -236,14 +236,14 @@ def prices(par, ini, ss,
 
     # a. foreign prices in DKK
     PF_eu[:] = PF_eu_s * E
-    PF_us[:] = PF_us_s * E_us
+    PF_us[:] = (1.0 + tau_m) * PF_us_s * E_us
 
     # b. aggregate home tradeable price: flat CES of TH-High and TH-Low
     PTH[:] = price_index(PHH, PHL, par.eta_TH, par.omega_TH_H)
 
     # home tradeable price in foreign currencies (for Armington export demand)
     PTH_eu_s[:] = PTH / E
-    PTH_us_s[:] = PTH / E_us
+    PTH_us_s[:] = (1.0 + tau_x) * PTH / E_us
 
     # c. foreign tradeable bundle (EU vs US)
     PF_TF[:] = price_index(PF_us, PF_eu, par.etaF_us, par.alpha_us)
@@ -391,11 +391,13 @@ def consumption(par, ini, ss,
       Inner nest  : TH-High (PHH) vs TH-Low (PHL) — flat CES (omega_TH_H, eta_TH)
     Foreign bundle : EU vs US  (alpha_us, etaF_us)
 
+    tau_x = US tariff on DK+EA exports: enters as a price wedge in the US
+    Armington demand, making DK goods effectively more expensive for US buyers.
+
     Foreign consumers (EU, US) face the same aggregate PTH for DK exports.
     Export quantities are split between sectors with the same flat-CES shares,
     so no export differentiation by sector is imposed.
     """
-
     # a. T vs NT
     CT[:]  = par.alphaT   * (PT  / P)**(-par.etaT) * C_hh
     CNT[:] = (1-par.alphaT) * (PNT / P)**(-par.etaT) * C_hh
@@ -413,6 +415,7 @@ def consumption(par, ini, ss,
     CTF_eu[:] = (1-par.alpha_us)  * (PF_eu / PF_TF)**(-par.etaF_us) * CTF
 
     # e. total export demand from EU and US (Armington on aggregate PTH)
+    #    tau_x already embedded in PTH_us_s (prices block), tau_m in PF_us (prices block)
     CTH_eu_s[:] = (PTH_eu_s / PF_eu_s)**(-par.eta_s) * M_eu_s
     CTH_us_s[:] = (PTH_us_s / PF_us_s)**(-par.eta_s) * M_us_s
 
