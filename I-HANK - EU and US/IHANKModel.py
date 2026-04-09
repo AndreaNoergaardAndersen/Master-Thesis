@@ -171,11 +171,11 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # h. shocks
         # Tariff parameters
         
-        par.jump_tau_m = 0.0     # Jump size for tau_m shock
+        par.jump_tau_m = 0.00     # Jump size for tau_m shock
         par.rho_tau_m = 0.00     # Persistence of tau_m
         par.std_tau_m = 0.00    # std.
         
-        par.jump_tau_x = 0.0     # Jump size for tau_m shock
+        par.jump_tau_x = 0.00     # Jump size for tau_m shock
         par.rho_tau_x = 0.00     # Persistence of tau_m
         par.std_tau_x = 0.00    # std.
         par.tariff_rev_lumpsum = False  # Revenue allocation mode
