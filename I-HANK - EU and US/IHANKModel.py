@@ -172,6 +172,9 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # f. government
         par.tau_ss = 0.30
         par.omega = 0.10
+        par.phi_B = 1/3
+
+        par.phi_NFA = 0.001
 
         # central bank
         par.float = False

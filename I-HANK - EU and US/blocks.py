@@ -331,23 +331,32 @@ def government(par, ini, ss,
 
         B_lag = prev(B, t, ini.B)
 
-        tau[t] = ss.tau + par.omega*(B_lag - ss.B) / (ss.YHH + ss.YHL + ss.YNT)
-        #revenue = tau_m[t]/(1+tau_m[t]) * PM_dk_us[t] / P[t] * (M_dk_us_h[t] + M_dk_us_l[t])
-        revenue = 0.0
-        if par.tariff_rev_lumpsum:
-            B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t] - tau[t]*tax_base
-        else:
-            B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t] - tau[t]*tax_base - revenue
+        revenue = tau_m[t]/(1+tau_m[t]) * PM_dk_us[t] / P[t] * (M_dk_us_h[t] + M_dk_us_l[t])
 
-    # household income (after-tax wage income + optional lump-sum transfer)
-    if par.tariff_rev_lumpsum:
-        inc_HH[:] = (1-tau)*wHH*NHH + revenue*par.sHH
-        inc_HL[:] = (1-tau)*wHL*NHL + revenue*par.sHL
-        inc_NT[:] = (1-tau)*wNT*NNT + revenue*sNT
-    else:
+        B[t]=ss.B+par.phi_B*((B_lag-ss.B) - revenue)
+
+        tau[t]=((1.0 + ra[t])*B_lag + PNT[t]/P[t]*G[t] - revenue - B[t])/tax_base
+
         inc_HH[:] = (1-tau)*wHH*NHH
         inc_HL[:] = (1-tau)*wHL*NHL
         inc_NT[:] = (1-tau)*wNT*NNT
+        #tau[t] = ss.tau + par.omega*(B_lag - ss.B) / (ss.YHH + ss.YHL + ss.YNT)
+        #revenue = tau_m[t]/(1+tau_m[t]) * PM_dk_us[t] / P[t] * (M_dk_us_h[t] + M_dk_us_l[t])
+        #revenue = 0.0
+        #if par.tariff_rev_lumpsum:
+        #    B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t] - tau[t]*tax_base
+        #else:
+        #    B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t] - tau[t]*tax_base - revenue
+
+    # household income (after-tax wage income + optional lump-sum transfer)
+    #if par.tariff_rev_lumpsum:
+    #    inc_HH[:] = (1-tau)*wHH*NHH + revenue*par.sHH
+    #    inc_HL[:] = (1-tau)*wHL*NHL + revenue*par.sHL
+    #    inc_NT[:] = (1-tau)*wNT*NNT + revenue*sNT
+    #else:
+    #    inc_HH[:] = (1-tau)*wHH*NHH
+    #    inc_HL[:] = (1-tau)*wHL*NHL
+    #    inc_NT[:] = (1-tau)*wNT*NNT
 
 @nb.njit
 def NKWCs(par, ini, ss,
@@ -376,11 +385,14 @@ def NKWCs(par, ini, ss,
 @nb.njit
 def UIP(par,ini,ss,Q,r,rF_eu,UIP_res, Q_us, rF_us, UIP_res_us):
 
+    #NFA[:]=A_hh - B
+    #spread = par.phi_NFA*(NFA - ss.NFA)/ss.GDP
+
     Q_plus = lead(Q,ss.Q)
-    UIP_res[:] = (1+r) - (1+rF_eu)*Q_plus/Q
+    UIP_res[:] = (1+r) - (1+rF_eu)*Q_plus/Q # + spread
 
     Q_us_plus = lead(Q_us, ss.Q_us)
-    UIP_res_us[:] = (1+r) - (1+rF_us)*Q_us_plus/Q_us
+    UIP_res_us[:] = (1+r) - (1+rF_us)*Q_us_plus/Q_us #+ spread
 
 @nb.njit
 def consumption(par, ini, ss,
@@ -449,10 +461,12 @@ def market_clearing(par, ini, ss,
 def accounting(par, ini, ss,
                PHH, YHH, PHL, YHL, PNT, YNT, P, C_hh, G, A_hh, B, ra,
                GDP, NX, CA, NFA, Walras,
-               PM_dk_h, M_dk_h, PM_dk_l, M_dk_l):
+               PM_dk_h, M_dk_h, PM_dk_l, M_dk_l,
+               tau_m, PM_dk_us, M_dk_us_h, M_dk_us_l):
 
     # GDP = value added = gross output minus intermediate inputs
-    GDP[:] = (PHH*YHH - PM_dk_h*M_dk_h + PHL*YHL - PM_dk_l*M_dk_l + PNT*YNT) / P
+    tariff_rev=tau_m/(1+tau_m)*PM_dk_us/P*(M_dk_us_h+M_dk_us_l)
+    GDP[:] = (PHH*YHH - PM_dk_h*M_dk_h + PHL*YHL - PM_dk_l*M_dk_l + PNT*YNT) / P + tariff_rev
     NX[:] = GDP - C_hh - PNT/P*G
 
     NFA[:] = A_hh - B
