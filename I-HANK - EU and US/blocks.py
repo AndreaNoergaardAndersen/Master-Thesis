@@ -43,7 +43,7 @@ def mon_pol(par,ini,ss,E,CB, E_us, CB_us):
 
 @nb.njit
 def material_prices(par, ini, ss,
-                    piM_eu_eu, piM_us_us,
+                    #piM_eu_eu, piM_us_us,
                     E, E_us,
                     PM_eu_eu, PM_us_us, PM_eu_us, PM_eu, PM_us_eu, PM_us,
                     PM_dk_eu, PM_dk_us, tau_m, tau_x):
@@ -55,10 +55,12 @@ def material_prices(par, ini, ss,
     """
 
     # EU-sourced material price in EUR
-    price_from_inflation(PM_eu_eu, piM_eu_eu, par.T, ss.PM_eu_eu)
+    PM_eu_eu[:]=ss.PM_eu_eu
+    #price_from_inflation(PM_eu_eu, piM_eu_eu, par.T, ss.PM_eu_eu)
 
     # US-sourced material price in USD
-    price_from_inflation(PM_us_us, piM_us_us, par.T, ss.PM_us_us)
+    PM_us_us[:]=ss.PM_us_us
+    # price_from_inflation(PM_us_us, piM_us_us, par.T, ss.PM_us_us)
 
     # US materials priced in EUR (for EU production block)
     PM_eu_us[:] = (1.0 + tau_m) * PM_us_us * E_us / E
@@ -83,7 +85,8 @@ def eu_nk(par, ini, ss,
           Y_eu, C_eu, N_eu, pi_eu, i_eu,
           PF_eu_s, rF_eu, M_eu_s, mc_eu, W_eu,
           PM_eu_eu, PM_eu_us, PM_eu, M_eu, M_eu_eu, M_eu_us,
-          eu_Euler_res, eu_LS_res, eu_NKPC_res, eu_TR_res, eu_RC_res):
+          eu_Euler_res, eu_LS_res, eu_NKPC_res, eu_TR_res, eu_RC_res,
+          tau_m):
 
     C_eu_plus = lead(C_eu, ss.C_eu)
     pi_eu_plus = lead(pi_eu, ss.pi_eu)
@@ -110,7 +113,10 @@ def eu_nk(par, ini, ss,
 
     eu_Euler_res[:] = C_eu**(-par.sigma_eu) - par.beta_eu * (1.0 + rF_eu) * C_eu_plus**(-par.sigma_eu)
     eu_LS_res[:] = par.varphi_eu * N_eu**(par.nu_eu) - w_eu * C_eu**(-par.sigma_eu)
-    eu_RC_res[:] = Y_eu - C_eu - (PM_eu / PF_eu_s) * M_eu
+
+    
+    tariff_rev_eu = tau_m / (1.0 + tau_m) * (PM_eu_us / PF_eu_s) * M_eu_us
+    eu_RC_res[:] = Y_eu - C_eu - (PM_eu / PF_eu_s) * M_eu + tariff_rev_eu
     eu_NKPC_res[:] = pi_eu - (par.beta_eu * pi_eu_plus + par.kappa_eu * (mc_eu - 1.0))
     eu_TR_res[:] = i_eu - (ss.i_eu + par.phi_pi_eu * (pi_eu - ss.pi_eu) + i_shock_eu)
 
@@ -122,7 +128,7 @@ def us_nk(par, ini, ss,
           Y_us, C_us, N_us, pi_us, i_us,
           PF_us_s, rF_us, M_us_s, mc_us, W_us,
           PM_us_us, PM_us_eu, PM_us, M_us, M_us_eu, M_us_us,
-          us_Euler_res, us_LS_res, us_NKPC_res, us_TR_res, us_RC_res):
+          us_Euler_res, us_LS_res, us_NKPC_res, us_TR_res, us_RC_res, tau_x):
 
     C_us_plus = lead(C_us, ss.C_us)
     pi_us_plus = lead(pi_us, ss.pi_us)
@@ -149,7 +155,9 @@ def us_nk(par, ini, ss,
 
     us_Euler_res[:] = C_us**(-par.sigma_us) - par.beta_us * (1.0 + rF_us) * C_us_plus**(-par.sigma_us)
     us_LS_res[:] = par.varphi_us * N_us**(par.nu_us) - w_us * C_us**(-par.sigma_us)
-    us_RC_res[:] = Y_us - C_us - (PM_us / PF_us_s) * M_us
+
+    tariff_rev_us = tau_x / (1.0 + tau_x) * (PM_us_eu / PF_us_s) * M_us_eu
+    us_RC_res[:] = Y_us - C_us - (PM_us / PF_us_s) * M_us + tariff_rev_us
     us_NKPC_res[:] = pi_us - (par.beta_us * pi_us_plus + par.kappa_us * (mc_us - 1.0))
     us_TR_res[:] = i_us - (ss.i_us + par.phi_pi_us * (pi_us - ss.pi_us) + i_shock_us)
 
@@ -236,7 +244,7 @@ def prices(par, ini, ss,
 
     # a. foreign prices in DKK
     PF_eu[:] = PF_eu_s * E
-    PF_us[:] = (1.0 + tau_m) * PF_us_s * E_us
+    PF_us[:] = PF_us_s * E_us #(1.0 + tau_m) * 
 
     # b. aggregate home tradeable price: flat CES of TH-High and TH-Low
     PTH[:] = price_index(PHH, PHL, par.eta_TH, par.omega_TH_H)
@@ -324,8 +332,8 @@ def government(par, ini, ss,
         B_lag = prev(B, t, ini.B)
 
         tau[t] = ss.tau + par.omega*(B_lag - ss.B) / (ss.YHH + ss.YHL + ss.YNT)
-        revenue = tau_m[t] * PM_dk_us[t] / P[t] * (M_dk_us_h[t] + M_dk_us_l[t])
-
+        #revenue = tau_m[t]/(1+tau_m[t]) * PM_dk_us[t] / P[t] * (M_dk_us_h[t] + M_dk_us_l[t])
+        revenue = 0.0
         if par.tariff_rev_lumpsum:
             B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t] - tau[t]*tax_base
         else:
@@ -433,8 +441,8 @@ def market_clearing(par, ini, ss,
                     YNT, CNT, G,
                     clearing_YHH, clearing_YHL, clearing_YNT):
 
-    clearing_YHH[:] = YHH - CTH_H - CTH_HH_eu_s - CTH_HH_us_s
-    clearing_YHL[:] = YHL - CTH_L - CTH_HL_eu_s - CTH_HL_us_s
+    clearing_YHH[:] = YHH - CTH_H - CTH_HH_eu_s - CTH_HH_us_s #- M_dk_h
+    clearing_YHL[:] = YHL - CTH_L - CTH_HL_eu_s - CTH_HL_us_s #- M_dk_l
     clearing_YNT[:] = YNT - CNT - G
 
 @nb.njit

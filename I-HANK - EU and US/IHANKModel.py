@@ -30,8 +30,8 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.shocks = ['ZTH','ZNT', #domestic TFPs
                        'beta','G', #Domestic preference and fiscal shocks
                        'i_shock', #domestic monetary shock (keep at zero under peg)
-                       'i_shock_eu', 'Z_eu', 'piM_eu_eu', # EU natural-rate, monetary shocks and foreign TFP
-                       'i_shock_us', 'Z_us', 'piM_us_us', # US natural-rate, monetary shocks and foreign TFP
+                       'i_shock_eu', 'Z_eu', # EU natural-rate, monetary shocks and foreign TFP  'piM_eu_eu',
+                       'i_shock_us', 'Z_us', # US natural-rate, monetary shocks and foreign TFP  'piM_us_us',
                        'tau_x',  # US tariff on DK+EA exports
                        'tau_m']  # DK+EA tariff on US-origin materials
 
@@ -74,7 +74,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         # a. discrete states
         par.Nfix = 3  # TH-High (i=0), TH-Low (i=1), NT (i=2)
-        par.Nz = 7    # idiosyncratic productivity
+        par.Nz = 5    # idiosyncratic productivity
 
         # Employment shares (from Danish sectoral data, Table 1.9)
         # High-input tradeable (ih_eh + ih_el): 37%+1% = 38%
@@ -116,8 +116,8 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.muw = 1.2     # wage mark-up
 
         # Danish production — sector-specific CES parameters (Table 1.3)
-        par.beta_M_dk_h = 0.32      # material share, high-input sector (omega_H)
-        par.beta_M_dk_l = 0.35      # material share, low-input sector  (omega_L)
+        par.beta_M_dk_h = 1/3      # material share, high-input sector (omega_H)
+        par.beta_M_dk_l = 1/3     # material share, low-input sector  (omega_L)
         par.alpha_M_dk_us_h = 0.27  # US share in materials, high-input sector (alpha_H)
         par.alpha_M_dk_us_l = 0.17  # US share in materials, low-input sector  (alpha_L)
         par.eta_VA_dk = 1.50        # outer CES elasticity (labor vs materials), shared
@@ -180,7 +180,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # g. grids
         par.a_min = 0.0
         par.a_max = 50.0
-        par.Na = 200
+        par.Na = 500
 
         # h. shocks
         par.jump_tau_m = 0.0
@@ -213,7 +213,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.std_i_shock_us = 0.00
 
         # i. misc.
-        par.T = 100
+        par.T = 500
 
         par.max_iter_solve = 50_000
         par.max_iter_simulate = 50_000

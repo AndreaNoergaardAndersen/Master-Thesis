@@ -99,7 +99,7 @@ def evaluate_ss(model, do_print=False):
 
     # normalize prices/exchange rates to 1 in SS
     for varname in ['PF_eu_s', 'E', 'PTH_eu_s', 'Q', 'PF_eu',
-                    'Q_us', 'PF_us_s', 'E_us', 'PF_us', 'PTH_us_s', 'CB_us',
+                    'Q_us', 'PF_us_s', 'E_us', 'PF_us', 'PTH_us_s',
                     'PF_TF', 'PTH', 'PT', 'PNT', 'P',
                     # sector output prices and nominal wages (= 1 in SS)
                     'PHH', 'PHL', 'WHH', 'WHL', 'WNT',
@@ -113,8 +113,8 @@ def evaluate_ss(model, do_print=False):
         ss.__dict__[varname] = 1.0
 
     # zero inflation in SS
-    for varname in ['pi_F_eu_s', 'pi_F_eu', 'pi_TH_eu_s', 'pi_eu', 'piM_eu_eu',
-                    'pi_F_us_s', 'pi_F_us', 'pi_TH_us_s', 'pi_us', 'piM_us_us',
+    for varname in ['pi_F_eu_s', 'pi_F_eu', 'pi_TH_eu_s', 'pi_eu', #'piM_eu_eu',
+                    'pi_F_us_s', 'pi_F_us', 'pi_TH_us_s', 'pi_us', #'piM_us_us',
                     'pi_FF', 'pi_TH', 'pi_T', 'pi_NT', 'pi',
                     'pi_PHH', 'pi_PHL',
                     'piWHH', 'piWHL', 'piWNT',
