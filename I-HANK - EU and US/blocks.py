@@ -46,7 +46,7 @@ def material_prices(par, ini, ss,
                     #piM_eu_eu, piM_us_us,
                     E, E_us,
                     PM_eu_eu, PM_us_us, PM_eu_us, PM_eu, PM_us_eu, PM_us,
-                    PM_dk_eu, PM_dk_us, tau_m, tau_x):
+                    PM_dk_eu, PM_dk_us, tau_m, tau_x, PF_eu_s, pi_eu, PF_us_s, pi_us):
     """
     Compute material price indices for EU and US production blocks, and
     the shared DK material price components (PM_dk_eu, PM_dk_us).
@@ -54,12 +54,16 @@ def material_prices(par, ini, ss,
     in the production block using sector-specific alpha parameters.
     """
 
+    price_from_inflation(PF_eu_s, pi_eu, par.T, ss.PF_eu_s)
     # EU-sourced material price in EUR
-    PM_eu_eu[:]=ss.PM_eu_eu
+    #PM_eu_eu[:]=ss.PM_eu_eu
+    PM_eu_eu[:]=PF_eu_s
     #price_from_inflation(PM_eu_eu, piM_eu_eu, par.T, ss.PM_eu_eu)
 
     # US-sourced material price in USD
-    PM_us_us[:]=ss.PM_us_us
+    price_from_inflation(PF_us_s, pi_us, par.T, ss.PF_us_s)
+    PM_us_us[:]=PF_us_s
+    #PM_us_us[:]=ss.PM_us_us
     # price_from_inflation(PM_us_us, piM_us_us, par.T, ss.PM_us_us)
 
     # US materials priced in EUR (for EU production block)
@@ -91,7 +95,7 @@ def eu_nk(par, ini, ss,
     C_eu_plus = lead(C_eu, ss.C_eu)
     pi_eu_plus = lead(pi_eu, ss.pi_eu)
 
-    price_from_inflation(PF_eu_s, pi_eu, par.T, ss.PF_eu_s)
+    #price_from_inflation(PF_eu_s, pi_eu, par.T, ss.PF_eu_s)
 
     rF_eu[:] = (1.0 + i_eu) / (1.0 + pi_eu_plus) - 1.0
 
