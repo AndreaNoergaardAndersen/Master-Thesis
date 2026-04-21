@@ -12,6 +12,10 @@ def price_index(P1,P2,eta,alpha):
     return (alpha*P1**(1-eta)+(1-alpha)*P2**(1-eta))**(1/(1-eta))
 
 @nb.njit
+def price_index_4(P1,P2,P3,P4,eta,o1,o2,o3,o4):
+    return (o1*P1**(1-eta)+o2*P2**(1-eta)+o3*P3**(1-eta)+o4*P4**(1-eta))**(1/(1-eta))
+
+@nb.njit
 def inflation_from_price(P,inival):
 
     P_lag = lag(inival,P)
@@ -43,45 +47,24 @@ def mon_pol(par,ini,ss,E,CB, E_us, CB_us):
 
 @nb.njit
 def material_prices(par, ini, ss,
-                    #piM_eu_eu, piM_us_us,
                     E, E_us,
                     PM_eu_eu, PM_us_us, PM_eu_us, PM_eu, PM_us_eu, PM_us,
                     PM_dk_eu, PM_dk_us, tau_m, tau_x, PF_eu_s, pi_eu, PF_us_s, pi_us):
-    """
-    Compute material price indices for EU and US production blocks, and
-    the shared DK material price components (PM_dk_eu, PM_dk_us).
-    Sector-specific DK aggregate prices (PM_dk_h, PM_dk_l) are computed
-    in the production block using sector-specific alpha parameters.
-    """
 
     price_from_inflation(PF_eu_s, pi_eu, par.T, ss.PF_eu_s)
-    # EU-sourced material price in EUR
-    #PM_eu_eu[:]=ss.PM_eu_eu
     PM_eu_eu[:]=PF_eu_s
-    #price_from_inflation(PM_eu_eu, piM_eu_eu, par.T, ss.PM_eu_eu)
 
-    # US-sourced material price in USD
     price_from_inflation(PF_us_s, pi_us, par.T, ss.PF_us_s)
     PM_us_us[:]=PF_us_s
-    #PM_us_us[:]=ss.PM_us_us
-    # price_from_inflation(PM_us_us, piM_us_us, par.T, ss.PM_us_us)
 
-    # US materials priced in EUR (for EU production block)
     PM_eu_us[:] = (1.0 + tau_m) * PM_us_us * E_us / E
-
-    # EU materials priced in USD (for US production block)
     PM_us_eu[:] = (1.0 + tau_x) * PM_eu_eu * E / E_us
 
-    # Material price index for EU production
     PM_eu[:] = price_index(PM_eu_us, PM_eu_eu, par.eta_M_eu, par.alpha_M_eu_us)
-
-    # Material price index for US production
     PM_us[:] = price_index(PM_us_us, PM_us_eu, par.eta_M_us, par.alpha_M_us_us)
 
-    # Shared DK material price components in DKK
     PM_dk_eu[:] = PM_eu_eu * E
     PM_dk_us[:] = (1.0 + tau_m) * PM_us_us * E_us
-    # Note: sector-specific PM_dk_h and PM_dk_l are computed in production block
 
 @nb.njit
 def eu_nk(par, ini, ss,
@@ -94,8 +77,6 @@ def eu_nk(par, ini, ss,
 
     C_eu_plus = lead(C_eu, ss.C_eu)
     pi_eu_plus = lead(pi_eu, ss.pi_eu)
-
-    #price_from_inflation(PF_eu_s, pi_eu, par.T, ss.PF_eu_s)
 
     rF_eu[:] = (1.0 + i_eu) / (1.0 + pi_eu_plus) - 1.0
 
@@ -118,7 +99,6 @@ def eu_nk(par, ini, ss,
     eu_Euler_res[:] = C_eu**(-par.sigma_eu) - par.beta_eu * (1.0 + rF_eu) * C_eu_plus**(-par.sigma_eu)
     eu_LS_res[:] = par.varphi_eu * N_eu**(par.nu_eu) - w_eu * C_eu**(-par.sigma_eu)
 
-    
     tariff_rev_eu = tau_m / (1.0 + tau_m) * (PM_eu_us / PF_eu_s) * M_eu_us
     eu_RC_res[:] = Y_eu - C_eu - (PM_eu / PF_eu_s) * M_eu + tariff_rev_eu
     eu_NKPC_res[:] = pi_eu - (par.beta_eu * pi_eu_plus + par.kappa_eu * (mc_eu - 1.0))
@@ -169,91 +149,114 @@ def us_nk(par, ini, ss,
 
 @nb.njit
 def production(par, ini, ss,
-               ZTH, ZNT, NHH, NHL, NNT, piWHH, piWHL, piWNT,
-               YHH, YHL, YNT, WHH, WHL, WNT, PHH, PHL, PNT,
+               ZTH, ZNT, NHH, NHL, NLH, NLL, NNT,
+               piWHH, piWHL, piWLH, piWLL, piWNT,
+               YHH, YHL, YLH, YLL, YNT,
+               WHH, WHL, WLH, WLL, WNT,
+               PHH, PHL, PLH, PLL, PNT,
                PM_dk_eu, PM_dk_us,
                PM_dk_h, PM_dk_l,
-               M_dk_h, M_dk_eu_h, M_dk_us_h,
-               M_dk_l, M_dk_eu_l, M_dk_us_l):
+               M_dk_h,  M_dk_eu_h,  M_dk_us_h,
+               M_dk_l,  M_dk_eu_l,  M_dk_us_l,
+               M_dk_hx, M_dk_eu_hx, M_dk_us_hx,
+               M_dk_lx, M_dk_eu_lx, M_dk_us_lx):
     """
-    Danish production block with two tradeable sectors:
-      TH-High (HH): high US material exposure (alpha_M_dk_us_h, beta_M_dk_h)
-      TH-Low  (HL): low  US material exposure (alpha_M_dk_us_l, beta_M_dk_l)
-    Both sectors share the same TFP ZTH, outer-CES elasticity eta_VA_dk,
-    and inner-CES elasticity eta_M_dk.
-    PM_dk_eu and PM_dk_us (shared world prices in DKK) come from material_prices.
-    Sector-specific aggregate material prices PM_dk_h, PM_dk_l are computed here.
+    Danish production block with four tradeable sectors:
+      HH: high-material params (h), high US export share
+      HL: high-material params (h), low  US export share
+      LH: low-material  params (l), high US export share
+      LL: low-material  params (l), low  US export share
+    HH and HL share beta_M_dk_h, alpha_M_dk_us_h, PM_dk_h.
+    LH and LL share beta_M_dk_l, alpha_M_dk_us_l, PM_dk_l.
     """
 
-    # ---- Non-tradeable sector (unchanged) ----
+    # ---- Non-tradeable sector ----
     YNT[:] = ZNT * NNT
     price_from_inflation(WNT, piWNT, par.T, ss.WNT)
     PNT[:] = WNT / ZNT
 
-    # shared CES exponents
     pow_ = 1.0 - par.eta_VA_dk
     rho  = (par.eta_VA_dk - 1.0) / par.eta_VA_dk
 
-    # ---- TH-High sector ----
-    price_from_inflation(WHH, piWHH, par.T, ss.WHH)
-
-    # sector-specific aggregate material price (inner CES over EU and US materials)
+    # Shared aggregate material prices per material group
     PM_dk_h[:] = price_index(PM_dk_us, PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us_h)
+    PM_dk_l[:] = price_index(PM_dk_us, PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us_l)
 
-    # output price = unit cost (perfect competition)
+    # ---- HH sector (high material, high US export) ----
+    price_from_inflation(WHH, piWHH, par.T, ss.WHH)
     inside_cost_h = (1.0 - par.beta_M_dk_h) * WHH**pow_ + par.beta_M_dk_h * PM_dk_h**pow_
     PHH[:] = (inside_cost_h ** (1.0 / pow_)) / ZTH
-
-    # cost-minimising material demand (outer CES FOC)
     ratio_MN_h = (par.beta_M_dk_h / (1.0 - par.beta_M_dk_h)) * (WHH / PM_dk_h) ** par.eta_VA_dk
     M_dk_h[:] = NHH * ratio_MN_h
-
-    # inner CES: split between EU and US materials
     M_dk_us_h[:] = par.alpha_M_dk_us_h  * (PM_dk_us / PM_dk_h) ** (-par.eta_M_dk) * M_dk_h
     M_dk_eu_h[:] = (1.0 - par.alpha_M_dk_us_h) * (PM_dk_eu / PM_dk_h) ** (-par.eta_M_dk) * M_dk_h
-
-    # gross output
     inside_Y_h = ((1.0 - par.beta_M_dk_h)**(1.0/par.eta_VA_dk) * NHH**rho
                   + par.beta_M_dk_h**(1.0/par.eta_VA_dk) * M_dk_h**rho)
     YHH[:] = ZTH * (inside_Y_h ** (1.0 / rho))
 
-    # ---- TH-Low sector ----
+    # ---- HL sector (high material, low US export) ----
+    # Same production technology as HH (same h-params), different export structure
     price_from_inflation(WHL, piWHL, par.T, ss.WHL)
+    inside_cost_hx = (1.0 - par.beta_M_dk_h) * WHL**pow_ + par.beta_M_dk_h * PM_dk_h**pow_
+    PHL[:] = (inside_cost_hx ** (1.0 / pow_)) / ZTH
+    ratio_MN_hx = (par.beta_M_dk_h / (1.0 - par.beta_M_dk_h)) * (WHL / PM_dk_h) ** par.eta_VA_dk
+    M_dk_hx[:] = NHL * ratio_MN_hx
+    M_dk_us_hx[:] = par.alpha_M_dk_us_h  * (PM_dk_us / PM_dk_h) ** (-par.eta_M_dk) * M_dk_hx
+    M_dk_eu_hx[:] = (1.0 - par.alpha_M_dk_us_h) * (PM_dk_eu / PM_dk_h) ** (-par.eta_M_dk) * M_dk_hx
+    inside_Y_hx = ((1.0 - par.beta_M_dk_h)**(1.0/par.eta_VA_dk) * NHL**rho
+                   + par.beta_M_dk_h**(1.0/par.eta_VA_dk) * M_dk_hx**rho)
+    YHL[:] = ZTH * (inside_Y_hx ** (1.0 / rho))
 
-    PM_dk_l[:] = price_index(PM_dk_us, PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us_l)
-
-    inside_cost_l = (1.0 - par.beta_M_dk_l) * WHL**pow_ + par.beta_M_dk_l * PM_dk_l**pow_
-    PHL[:] = (inside_cost_l ** (1.0 / pow_)) / ZTH
-
-    ratio_MN_l = (par.beta_M_dk_l / (1.0 - par.beta_M_dk_l)) * (WHL / PM_dk_l) ** par.eta_VA_dk
-    M_dk_l[:] = NHL * ratio_MN_l
-
+    # ---- LH sector (low material, high US export) ----
+    price_from_inflation(WLH, piWLH, par.T, ss.WLH)
+    inside_cost_l = (1.0 - par.beta_M_dk_l) * WLH**pow_ + par.beta_M_dk_l * PM_dk_l**pow_
+    PLH[:] = (inside_cost_l ** (1.0 / pow_)) / ZTH
+    ratio_MN_l = (par.beta_M_dk_l / (1.0 - par.beta_M_dk_l)) * (WLH / PM_dk_l) ** par.eta_VA_dk
+    M_dk_l[:] = NLH * ratio_MN_l
     M_dk_us_l[:] = par.alpha_M_dk_us_l  * (PM_dk_us / PM_dk_l) ** (-par.eta_M_dk) * M_dk_l
     M_dk_eu_l[:] = (1.0 - par.alpha_M_dk_us_l) * (PM_dk_eu / PM_dk_l) ** (-par.eta_M_dk) * M_dk_l
-
-    inside_Y_l = ((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * NHL**rho
+    inside_Y_l = ((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * NLH**rho
                   + par.beta_M_dk_l**(1.0/par.eta_VA_dk) * M_dk_l**rho)
-    YHL[:] = ZTH * (inside_Y_l ** (1.0 / rho))
+    YLH[:] = ZTH * (inside_Y_l ** (1.0 / rho))
+
+    # ---- LL sector (low material, low US export) ----
+    # Same production technology as LH (same l-params), different export structure
+    price_from_inflation(WLL, piWLL, par.T, ss.WLL)
+    inside_cost_lx = (1.0 - par.beta_M_dk_l) * WLL**pow_ + par.beta_M_dk_l * PM_dk_l**pow_
+    PLL[:] = (inside_cost_lx ** (1.0 / pow_)) / ZTH
+    ratio_MN_lx = (par.beta_M_dk_l / (1.0 - par.beta_M_dk_l)) * (WLL / PM_dk_l) ** par.eta_VA_dk
+    M_dk_lx[:] = NLL * ratio_MN_lx
+    M_dk_us_lx[:] = par.alpha_M_dk_us_l  * (PM_dk_us / PM_dk_l) ** (-par.eta_M_dk) * M_dk_lx
+    M_dk_eu_lx[:] = (1.0 - par.alpha_M_dk_us_l) * (PM_dk_eu / PM_dk_l) ** (-par.eta_M_dk) * M_dk_lx
+    inside_Y_lx = ((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * NLL**rho
+                   + par.beta_M_dk_l**(1.0/par.eta_VA_dk) * M_dk_lx**rho)
+    YLL[:] = ZTH * (inside_Y_lx ** (1.0 / rho))
 
 @nb.njit
 def prices(par, ini, ss,
            PF_eu_s, PF_us_s, E, E_us,
-           PHH, PHL, PNT, WHH, WHL, WNT,
-           PF_eu, PF_us, PF_TF, PTH, PTH_eu_s, PTH_us_s, PT, P, Q, Q_us,
-           wHH, wHL, wNT, tau_m, tau_x):
+           PHH, PHL, PLH, PLL, PNT, WHH, WHL, WLH, WLL, WNT,
+           PF_eu, PF_us, PF_TF,
+           PTH, PTH_eu_s, PTH_us_s,
+           PT, P, Q, Q_us,
+           wHH, wHL, wLH, wLL, wNT, tau_x):
     """
     Price indices and real exchange rates.
-    PTH = flat CES aggregate of the two home tradeable sector prices PHH and PHL.
+    PTH = single 4-sector CES aggregate (omega_TH weights), shared by all buyers.
+    EU and US face the same PTH; sector allocation within their export demand
+    uses destination-specific omega weights (omega_eu_i, omega_us_i) in the
+    consumption block.
     """
 
     # a. foreign prices in DKK
     PF_eu[:] = PF_eu_s * E
-    PF_us[:] = PF_us_s * E_us #(1.0 + tau_m) * 
+    PF_us[:] = PF_us_s * E_us
 
-    # b. aggregate home tradeable price: flat CES of TH-High and TH-Low
-    PTH[:] = price_index(PHH, PHL, par.eta_TH, par.omega_TH_H)
+    # b. home tradeable price index (shared across domestic, EU and US buyers)
+    PTH[:] = price_index_4(PHH, PHL, PLH, PLL, par.eta_TH,
+                           par.omega_TH_HH, par.omega_TH_HL, par.omega_TH_LH, par.omega_TH_LL)
 
-    # home tradeable price in foreign currencies (for Armington export demand)
+    # in foreign currency (for Armington) — both use same PTH
     PTH_eu_s[:] = PTH / E
     PTH_us_s[:] = (1.0 + tau_x) * PTH / E_us
 
@@ -271,14 +274,17 @@ def prices(par, ini, ss,
     # f. real wages
     wHH[:] = WHH / P
     wHL[:] = WHL / P
+    wLH[:] = WLH / P
+    wLL[:] = WLL / P
     wNT[:] = WNT / P
 
 @nb.njit
 def inflation(par, ini, ss,
               PF_eu_s, PF_us_s, PF_eu, PF_us, PF_TF,
-              PNT, PHH, PHL, PTH, PT, P, PTH_eu_s, PTH_us_s,
+              PNT, PHH, PHL, PLH, PLL, PTH, PT, P,
+              PTH_eu_s, PTH_us_s,
               pi_F_eu_s, pi_F_us_s, pi_F_eu, pi_F_us, pi_FF,
-              pi_NT, pi_PHH, pi_PHL, pi_TH, pi_T, pi,
+              pi_NT, pi_PHH, pi_PHL, pi_PLH, pi_PLL, pi_TH, pi_T, pi,
               pi_TH_eu_s, pi_TH_us_s):
 
     pi_F_eu_s[:] = inflation_from_price(PF_eu_s, ini.PF_eu_s)
@@ -292,6 +298,8 @@ def inflation(par, ini, ss,
     pi_NT[:]     = inflation_from_price(PNT,     ini.PNT)
     pi_PHH[:]    = inflation_from_price(PHH,     ini.PHH)
     pi_PHL[:]    = inflation_from_price(PHL,     ini.PHL)
+    pi_PLH[:]    = inflation_from_price(PLH,     ini.PLH)
+    pi_PLL[:]    = inflation_from_price(PLL,     ini.PLL)
     pi_TH[:]     = inflation_from_price(PTH,     ini.PTH)
     pi_T[:]      = inflation_from_price(PT,      ini.PT)
     pi[:]        = inflation_from_price(P,       ini.P)
@@ -316,72 +324,64 @@ def central_bank(par,ini,ss,pi,i,r,ra,E,i_shock,CB):
 
 @nb.njit
 def government(par, ini, ss,
-               PNT, P, wHH, NHH, wHL, NHL, wNT, NNT, ra, G, B, tau,
-               inc_HH, inc_HL, inc_NT,
-               M_dk_us_h, M_dk_us_l, PM_dk_us, tau_m):
+               PNT, P, wHH, NHH, wHL, NHL, wLH, NLH, wLL, NLL, wNT, NNT,
+               ra, G, B, tau,
+               inc_HH, inc_HL, inc_LH, inc_LL, inc_NT,
+               M_dk_us_h, M_dk_us_hx, M_dk_us_l, M_dk_us_lx,
+               PM_dk_us, tau_m):
     """
-    Government budget constraint and household income streams.
-    Tariff revenue = tau_m * (PM_dk_us/P) * (M_dk_us_h + M_dk_us_l)
-    PM_dk_us is shared across sectors; only quantities differ.
+    Government budget constraint and household income streams (4 tradeable sectors).
+    Tariff revenue = tau_m/(1+tau_m) * (PM_dk_us/P) * sum of all US material demands.
     """
 
-    sNT = 1.0 - par.sHH - par.sHL
-
-    #revenue = np.zeros(par.T)
+    sNT = 1.0 - par.sHH - par.sHL - par.sLH - par.sLL
 
     for t in range(par.T):
 
-        tax_base = wHH[t]*NHH[t] + wHL[t]*NHL[t] + wNT[t]*NNT[t]
+        tax_base = (wHH[t]*NHH[t] + wHL[t]*NHL[t]
+                    + wLH[t]*NLH[t] + wLL[t]*NLL[t] + wNT[t]*NNT[t])
 
         B_lag = prev(B, t, ini.B)
 
-        revenue = tau_m[t]/(1+tau_m[t]) * PM_dk_us[t] / P[t] * (M_dk_us_h[t] + M_dk_us_l[t])
+        M_us_total = M_dk_us_h[t] + M_dk_us_hx[t] + M_dk_us_l[t] + M_dk_us_lx[t]
+        revenue = tau_m[t]/(1+tau_m[t]) * PM_dk_us[t] / P[t] * M_us_total
 
-        B[t]=ss.B+par.phi_B*((B_lag-ss.B) - revenue)
+        B[t] = ss.B + par.phi_B*((B_lag - ss.B) - revenue)
 
-        tau[t]=((1.0 + ra[t])*B_lag + PNT[t]/P[t]*G[t] - revenue - B[t])/tax_base
+        tau[t] = ((1.0 + ra[t])*B_lag + PNT[t]/P[t]*G[t] - revenue - B[t]) / tax_base
 
         inc_HH[:] = (1-tau)*wHH*NHH
         inc_HL[:] = (1-tau)*wHL*NHL
+        inc_LH[:] = (1-tau)*wLH*NLH
+        inc_LL[:] = (1-tau)*wLL*NLL
         inc_NT[:] = (1-tau)*wNT*NNT
-        #tau[t] = ss.tau + par.omega*(B_lag - ss.B) / (ss.YHH + ss.YHL + ss.YNT)
-        #revenue = tau_m[t]/(1+tau_m[t]) * PM_dk_us[t] / P[t] * (M_dk_us_h[t] + M_dk_us_l[t])
-        #revenue = 0.0
-        #if par.tariff_rev_lumpsum:
-        #    B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t] - tau[t]*tax_base
-        #else:
-        #    B[t] = (1+ra[t])*B_lag + PNT[t]/P[t]*G[t] - tau[t]*tax_base - revenue
-
-    # household income (after-tax wage income + optional lump-sum transfer)
-    #if par.tariff_rev_lumpsum:
-    #    inc_HH[:] = (1-tau)*wHH*NHH + revenue*par.sHH
-    #    inc_HL[:] = (1-tau)*wHL*NHL + revenue*par.sHL
-    #    inc_NT[:] = (1-tau)*wNT*NNT + revenue*sNT
-    #else:
-    #    inc_HH[:] = (1-tau)*wHH*NHH
-    #    inc_HL[:] = (1-tau)*wHL*NHL
-    #    inc_NT[:] = (1-tau)*wNT*NNT
 
 @nb.njit
 def NKWCs(par, ini, ss,
-          beta, piWHH, piWHL, piWNT, NHH, NHL, NNT,
-          wHH, wHL, wNT, tau,
-          UC_HH_hh, UC_HL_hh, UC_NT_hh,
-          NKWCHH_res, NKWCHL_res, NKWCNT_res):
+          beta, piWHH, piWHL, piWLH, piWLL, piWNT,
+          NHH, NHL, NLH, NLL, NNT,
+          wHH, wHL, wLH, wLL, wNT, tau,
+          UC_HH_hh, UC_HL_hh, UC_LH_hh, UC_LL_hh, UC_NT_hh,
+          NKWCHH_res, NKWCHL_res, NKWCLH_res, NKWCLL_res, NKWCNT_res):
 
-    sNT = 1.0 - par.sHH - par.sHL
+    sNT = 1.0 - par.sHH - par.sHL - par.sLH - par.sLL
 
-    # TH-High sector wage Phillips curve
     piWHH_plus = lead(piWHH, ss.piWHH)
     NKWCHH_res[:] = piWHH - (par.kappa*(par.varphiHH*(NHH/par.sHH)**par.nu
                               - 1/par.muw*(1-tau)*wHH*UC_HH_hh) + beta*piWHH_plus)
 
-    # TH-Low sector wage Phillips curve
     piWHL_plus = lead(piWHL, ss.piWHL)
     NKWCHL_res[:] = piWHL - (par.kappa*(par.varphiHL*(NHL/par.sHL)**par.nu
                               - 1/par.muw*(1-tau)*wHL*UC_HL_hh) + beta*piWHL_plus)
 
-    # NT sector wage Phillips curve
+    piWLH_plus = lead(piWLH, ss.piWLH)
+    NKWCLH_res[:] = piWLH - (par.kappa*(par.varphiLH*(NLH/par.sLH)**par.nu
+                              - 1/par.muw*(1-tau)*wLH*UC_LH_hh) + beta*piWLH_plus)
+
+    piWLL_plus = lead(piWLL, ss.piWLL)
+    NKWCLL_res[:] = piWLL - (par.kappa*(par.varphiLL*(NLL/par.sLL)**par.nu
+                              - 1/par.muw*(1-tau)*wLL*UC_LL_hh) + beta*piWLL_plus)
+
     piWNT_plus = lead(piWNT, ss.piWNT)
     NKWCNT_res[:] = piWNT - (par.kappa*(par.varphiNT*(NNT/sNT)**par.nu
                               - 1/par.muw*(1-tau)*wNT*UC_NT_hh) + beta*piWNT_plus)
@@ -389,38 +389,32 @@ def NKWCs(par, ini, ss,
 @nb.njit
 def UIP(par,ini,ss,Q,r,rF_eu,UIP_res, Q_us, rF_us, UIP_res_us):
 
-    #NFA[:]=A_hh - B
-    #spread = par.phi_NFA*(NFA - ss.NFA)/ss.GDP
-
     Q_plus = lead(Q,ss.Q)
-    UIP_res[:] = (1+r) - (1+rF_eu)*Q_plus/Q # + spread
+    UIP_res[:] = (1+r) - (1+rF_eu)*Q_plus/Q
 
     Q_us_plus = lead(Q_us, ss.Q_us)
-    UIP_res_us[:] = (1+r) - (1+rF_us)*Q_us_plus/Q_us #+ spread
+    UIP_res_us[:] = (1+r) - (1+rF_us)*Q_us_plus/Q_us
 
 @nb.njit
 def consumption(par, ini, ss,
-                C_hh, PT, PNT, P, PTH, PHH, PHL,
+                C_hh, PT, PNT, P, PTH, PHH, PHL, PLH, PLL,
                 PF_TF, PF_eu, PF_us,
                 M_eu_s, M_us_s, PTH_eu_s, PTH_us_s, PF_eu_s, PF_us_s,
                 CT, CNT, CTF, CTF_eu, CTF_us,
-                CTH, CTH_H, CTH_L,
+                CTH, CTH_HH, CTH_HL, CTH_LH, CTH_LL,
                 CTH_eu_s, CTH_us_s,
-                CTH_HH_eu_s, CTH_HL_eu_s,
-                CTH_HH_us_s, CTH_HL_us_s):
+                CTH_HH_eu_s, CTH_HL_eu_s, CTH_LH_eu_s, CTH_LL_eu_s,
+                CTH_HH_us_s, CTH_HL_us_s, CTH_LH_us_s, CTH_LL_us_s):
     """
-    Consumption allocation:
-      Outer nest  : T vs NT  (alphaT, etaT)
-      Middle nest : home (PTH) vs foreign bundle (PF_TF)  (alphaF, etaF)
-      Inner nest  : TH-High (PHH) vs TH-Low (PHL) — flat CES (omega_TH_H, eta_TH)
-    Foreign bundle : EU vs US  (alpha_us, etaF_us)
+    Consumption allocation with 4 home-tradeable sectors.
 
-    tau_x = US tariff on DK+EA exports: enters as a price wedge in the US
-    Armington demand, making DK goods effectively more expensive for US buyers.
+    All buyers (domestic, EU, US) consume the same PTH bundle with the same
+    omega_TH sector weights.  Sectors differ in US export intensity only through
+    the calibration of employment shares (sHH/sHL/sLH/sLL), not through
+    destination-specific CES weights.
 
-    Foreign consumers (EU, US) face the same aggregate PTH for DK exports.
-    Export quantities are split between sectors with the same flat-CES shares,
-    so no export differentiation by sector is imposed.
+    tau_x (US tariff on DK exports) is embedded in PTH_us_s via the prices block,
+    reducing total US demand for the DK bundle.
     """
     # a. T vs NT
     CT[:]  = par.alphaT   * (PT  / P)**(-par.etaT) * C_hh
@@ -430,47 +424,67 @@ def consumption(par, ini, ss,
     CTF[:] = par.alphaF      * (PF_TF / PT)**(-par.etaF) * CT
     CTH[:] = (1-par.alphaF)  * (PTH   / PT)**(-par.etaF) * CT
 
-    # c. inner flat CES: TH-High vs TH-Low within home bundle
-    CTH_H[:] = par.omega_TH_H       * (PHH / PTH)**(-par.eta_TH) * CTH
-    CTH_L[:] = (1.0-par.omega_TH_H) * (PHL / PTH)**(-par.eta_TH) * CTH
+    # c. 4-sector split — same omega_TH weights for domestic and foreign buyers
+    CTH_HH[:] = par.omega_TH_HH * (PHH / PTH)**(-par.eta_TH) * CTH
+    CTH_HL[:] = par.omega_TH_HL * (PHL / PTH)**(-par.eta_TH) * CTH
+    CTH_LH[:] = par.omega_TH_LH * (PLH / PTH)**(-par.eta_TH) * CTH
+    CTH_LL[:] = par.omega_TH_LL * (PLL / PTH)**(-par.eta_TH) * CTH
 
     # d. EU vs US inside foreign bundle
     CTF_us[:] = par.alpha_us      * (PF_us / PF_TF)**(-par.etaF_us) * CTF
     CTF_eu[:] = (1-par.alpha_us)  * (PF_eu / PF_TF)**(-par.etaF_us) * CTF
 
     # e. total export demand from EU and US (Armington on aggregate PTH)
-    #    tau_x already embedded in PTH_us_s (prices block), tau_m in PF_us (prices block)
+    #    tau_x already embedded in PTH_us_s (prices block)
     CTH_eu_s[:] = (PTH_eu_s / PF_eu_s)**(-par.eta_s) * M_eu_s
     CTH_us_s[:] = (PTH_us_s / PF_us_s)**(-par.eta_s) * M_us_s
 
-    # f. split exports by sector using the same flat-CES shares
-    #    (foreign consumers see the same PTH bundle as domestic consumers)
-    CTH_HH_eu_s[:] = par.omega_TH_H       * (PHH / PTH)**(-par.eta_TH) * CTH_eu_s
-    CTH_HL_eu_s[:] = (1.0-par.omega_TH_H) * (PHL / PTH)**(-par.eta_TH) * CTH_eu_s
-    CTH_HH_us_s[:] = par.omega_TH_H       * (PHH / PTH)**(-par.eta_TH) * CTH_us_s
-    CTH_HL_us_s[:] = (1.0-par.omega_TH_H) * (PHL / PTH)**(-par.eta_TH) * CTH_us_s
+    # f. sector-level export allocation — same omega_TH weights for EU and US
+    CTH_HH_eu_s[:] = par.omega_TH_HH * (PHH / PTH)**(-par.eta_TH) * CTH_eu_s
+    CTH_HL_eu_s[:] = par.omega_TH_HL * (PHL / PTH)**(-par.eta_TH) * CTH_eu_s
+    CTH_LH_eu_s[:] = par.omega_TH_LH * (PLH / PTH)**(-par.eta_TH) * CTH_eu_s
+    CTH_LL_eu_s[:] = par.omega_TH_LL * (PLL / PTH)**(-par.eta_TH) * CTH_eu_s
+
+    CTH_HH_us_s[:] = par.omega_TH_HH * (PHH / PTH)**(-par.eta_TH) * CTH_us_s
+    CTH_HL_us_s[:] = par.omega_TH_HL * (PHL / PTH)**(-par.eta_TH) * CTH_us_s
+    CTH_LH_us_s[:] = par.omega_TH_LH * (PLH / PTH)**(-par.eta_TH) * CTH_us_s
+    CTH_LL_us_s[:] = par.omega_TH_LL * (PLL / PTH)**(-par.eta_TH) * CTH_us_s
 
 @nb.njit
 def market_clearing(par, ini, ss,
-                    YHH, CTH_H, CTH_HH_eu_s, CTH_HH_us_s,
-                    YHL, CTH_L, CTH_HL_eu_s, CTH_HL_us_s,
+                    YHH, CTH_HH, CTH_HH_eu_s, CTH_HH_us_s,
+                    YHL, CTH_HL, CTH_HL_eu_s, CTH_HL_us_s,
+                    YLH, CTH_LH, CTH_LH_eu_s, CTH_LH_us_s,
+                    YLL, CTH_LL, CTH_LL_eu_s, CTH_LL_us_s,
                     YNT, CNT, G,
-                    clearing_YHH, clearing_YHL, clearing_YNT):
+                    clearing_YHH, clearing_YHL, clearing_YLH, clearing_YLL, clearing_YNT):
 
-    clearing_YHH[:] = YHH - CTH_H - CTH_HH_eu_s - CTH_HH_us_s #- M_dk_h
-    clearing_YHL[:] = YHL - CTH_L - CTH_HL_eu_s - CTH_HL_us_s #- M_dk_l
+    clearing_YHH[:] = YHH - CTH_HH - CTH_HH_eu_s - CTH_HH_us_s
+    clearing_YHL[:] = YHL - CTH_HL - CTH_HL_eu_s - CTH_HL_us_s
+    clearing_YLH[:] = YLH - CTH_LH - CTH_LH_eu_s - CTH_LH_us_s
+    clearing_YLL[:] = YLL - CTH_LL - CTH_LL_eu_s - CTH_LL_us_s
     clearing_YNT[:] = YNT - CNT - G
 
 @nb.njit
 def accounting(par, ini, ss,
-               PHH, YHH, PHL, YHL, PNT, YNT, P, C_hh, G, A_hh, B, ra,
+               PHH, YHH, PHL, YHL, PLH, YLH, PLL, YLL, PNT, YNT,
+               P, C_hh, G, A_hh, B, ra,
                GDP, NX, CA, NFA, Walras,
-               PM_dk_h, M_dk_h, PM_dk_l, M_dk_l,
-               tau_m, PM_dk_us, M_dk_us_h, M_dk_us_l):
+               PM_dk_h,  M_dk_h,  PM_dk_l,  M_dk_l,
+               M_dk_hx, M_dk_lx,
+               tau_m, PM_dk_us,
+               M_dk_us_h, M_dk_us_hx, M_dk_us_l, M_dk_us_lx):
 
-    # GDP = value added = gross output minus intermediate inputs
-    tariff_rev=tau_m/(1+tau_m)*PM_dk_us/P*(M_dk_us_h+M_dk_us_l)
-    GDP[:] = (PHH*YHH - PM_dk_h*M_dk_h + PHL*YHL - PM_dk_l*M_dk_l + PNT*YNT) / P + tariff_rev
+    M_us_total = M_dk_us_h + M_dk_us_hx + M_dk_us_l + M_dk_us_lx
+    tariff_rev = tau_m/(1+tau_m) * PM_dk_us/P * M_us_total
+
+    # GDP = value added across all sectors
+    GDP[:] = (PHH*YHH - PM_dk_h*M_dk_h
+              + PHL*YHL - PM_dk_h*M_dk_hx
+              + PLH*YLH - PM_dk_l*M_dk_l
+              + PLL*YLL - PM_dk_l*M_dk_lx
+              + PNT*YNT) / P + tariff_rev
+
     NX[:] = GDP - C_hh - PNT/P*G
 
     NFA[:] = A_hh - B

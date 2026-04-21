@@ -15,7 +15,7 @@ def prepare_hh_ss(model):
     par = model.par
     ss = model.ss
 
-    sNT = 1.0 - par.sHH - par.sHL
+    sNT = 1.0 - par.sHH - par.sHL - par.sLH - par.sLL
 
     ##################################
     # 1. grids and transition matrix #
@@ -29,10 +29,14 @@ def prepare_hh_ss(model):
     ###########################
 
     for i_fix in range(par.Nfix):
-        if i_fix == 0:    # TH-High
+        if i_fix == 0:    # HH
             ss.Dbeg[i_fix,:,0] = e_ergodic * par.sHH
-        elif i_fix == 1:  # TH-Low
+        elif i_fix == 1:  # HL
             ss.Dbeg[i_fix,:,0] = e_ergodic * par.sHL
+        elif i_fix == 2:  # LH
+            ss.Dbeg[i_fix,:,0] = e_ergodic * par.sLH
+        elif i_fix == 3:  # LL
+            ss.Dbeg[i_fix,:,0] = e_ergodic * par.sLL
         else:             # NT
             ss.Dbeg[i_fix,:,0] = e_ergodic * sNT
         ss.Dbeg[i_fix,:,1:] = 0.0
@@ -50,6 +54,10 @@ def prepare_hh_ss(model):
                 inc = ss.inc_HH / par.sHH * z
             elif i_fix == 1:
                 inc = ss.inc_HL / par.sHL * z
+            elif i_fix == 2:
+                inc = ss.inc_LH / par.sLH * z
+            elif i_fix == 3:
+                inc = ss.inc_LL / par.sLL * z
             else:
                 inc = ss.inc_NT / sNT * z
             c = (1+ss.ra) * par.a_grid + inc
@@ -63,7 +71,7 @@ def evaluate_ss(model, do_print=False):
     par = model.par
     ss = model.ss
 
-    sNT = 1.0 - par.sHH - par.sHL
+    sNT = 1.0 - par.sHH - par.sHL - par.sLH - par.sLL
 
     ss.beta = par.beta
 
@@ -102,7 +110,7 @@ def evaluate_ss(model, do_print=False):
                     'Q_us', 'PF_us_s', 'E_us', 'PF_us', 'PTH_us_s',
                     'PF_TF', 'PTH', 'PT', 'PNT', 'P',
                     # sector output prices and nominal wages (= 1 in SS)
-                    'PHH', 'PHL', 'WHH', 'WHL', 'WNT',
+                    'PHH', 'PHL', 'PLH', 'PLL', 'WHH', 'WHL', 'WLH', 'WLL', 'WNT',
                     # EU material prices
                     'PM_eu_eu', 'PM_eu_us', 'PM_eu', 'M_eu', 'M_eu_eu', 'M_eu_us',
                     # US material prices
@@ -113,11 +121,11 @@ def evaluate_ss(model, do_print=False):
         ss.__dict__[varname] = 1.0
 
     # zero inflation in SS
-    for varname in ['pi_F_eu_s', 'pi_F_eu', 'pi_TH_eu_s', 'pi_eu', #'piM_eu_eu',
-                    'pi_F_us_s', 'pi_F_us', 'pi_TH_us_s', 'pi_us', #'piM_us_us',
+    for varname in ['pi_F_eu_s', 'pi_F_eu', 'pi_TH_eu_s', 'pi_eu',
+                    'pi_F_us_s', 'pi_F_us', 'pi_TH_us_s', 'pi_us',
                     'pi_FF', 'pi_TH', 'pi_T', 'pi_NT', 'pi',
-                    'pi_PHH', 'pi_PHL',
-                    'piWHH', 'piWHL', 'piWNT',
+                    'pi_PHH', 'pi_PHL', 'pi_PLH', 'pi_PLL',
+                    'piWHH', 'piWHL', 'piWLH', 'piWLL', 'piWNT',
                     ]:
         ss.__dict__[varname] = 0.0
 
@@ -169,47 +177,69 @@ def evaluate_ss(model, do_print=False):
     pow_dk = 1.0 - par.eta_VA_dk
     rho_dk = (par.eta_VA_dk - 1.0) / par.eta_VA_dk
 
-    # ---- DK production: TH-High sector ----
+    # ---- DK production: HH sector (high material, high US export share) ----
     ss.ZTH = 1.0
     ss.NHH = par.sHH
-
     ss.PM_dk_h = blocks.price_index(ss.PM_dk_us, ss.PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us_h)
-
     # nominal wage from unit-cost inversion (PHH = ZTH = PM_dk_h = 1 → WHH = 1)
     rhs_h = ((ss.PHH * ss.ZTH)**pow_dk - par.beta_M_dk_h * ss.PM_dk_h**pow_dk) / (1.0 - par.beta_M_dk_h)
     ss.WHH = rhs_h ** (1.0 / pow_dk)
     ss.wHH = ss.WHH / ss.P
-
     ss.M_dk_h = ss.NHH * (par.beta_M_dk_h / (1.0 - par.beta_M_dk_h)) * (ss.WHH / ss.PM_dk_h)**par.eta_VA_dk
     ss.M_dk_us_h = par.alpha_M_dk_us_h * (ss.PM_dk_us / ss.PM_dk_h)**(-par.eta_M_dk) * ss.M_dk_h
     ss.M_dk_eu_h = (1.0 - par.alpha_M_dk_us_h) * (ss.PM_dk_eu / ss.PM_dk_h)**(-par.eta_M_dk) * ss.M_dk_h
-
     ss.YHH = ss.ZTH * (((1.0 - par.beta_M_dk_h)**(1.0/par.eta_VA_dk) * ss.NHH**rho_dk
                         + par.beta_M_dk_h**(1.0/par.eta_VA_dk) * ss.M_dk_h**rho_dk) ** (1.0 / rho_dk))
 
-    # ---- DK production: TH-Low sector ----
+    # ---- DK production: HL sector (high material, low US export share) ----
+    # Same production technology as HH (same h-params), different export intensity
     ss.NHL = par.sHL
-
-    ss.PM_dk_l = blocks.price_index(ss.PM_dk_us, ss.PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us_l)
-
-    rhs_l = ((ss.PHL * ss.ZTH)**pow_dk - par.beta_M_dk_l * ss.PM_dk_l**pow_dk) / (1.0 - par.beta_M_dk_l)
-    ss.WHL = rhs_l ** (1.0 / pow_dk)
+    rhs_hx = ((ss.PHL * ss.ZTH)**pow_dk - par.beta_M_dk_h * ss.PM_dk_h**pow_dk) / (1.0 - par.beta_M_dk_h)
+    ss.WHL = rhs_hx ** (1.0 / pow_dk)
     ss.wHL = ss.WHL / ss.P
+    ss.M_dk_hx = ss.NHL * (par.beta_M_dk_h / (1.0 - par.beta_M_dk_h)) * (ss.WHL / ss.PM_dk_h)**par.eta_VA_dk
+    ss.M_dk_us_hx = par.alpha_M_dk_us_h * (ss.PM_dk_us / ss.PM_dk_h)**(-par.eta_M_dk) * ss.M_dk_hx
+    ss.M_dk_eu_hx = (1.0 - par.alpha_M_dk_us_h) * (ss.PM_dk_eu / ss.PM_dk_h)**(-par.eta_M_dk) * ss.M_dk_hx
+    ss.YHL = ss.ZTH * (((1.0 - par.beta_M_dk_h)**(1.0/par.eta_VA_dk) * ss.NHL**rho_dk
+                        + par.beta_M_dk_h**(1.0/par.eta_VA_dk) * ss.M_dk_hx**rho_dk) ** (1.0 / rho_dk))
 
-    ss.M_dk_l = ss.NHL * (par.beta_M_dk_l / (1.0 - par.beta_M_dk_l)) * (ss.WHL / ss.PM_dk_l)**par.eta_VA_dk
+    # ---- DK production: LH sector (low material, high US export share) ----
+    ss.NLH = par.sLH
+    ss.PM_dk_l = blocks.price_index(ss.PM_dk_us, ss.PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us_l)
+    rhs_l = ((ss.PLH * ss.ZTH)**pow_dk - par.beta_M_dk_l * ss.PM_dk_l**pow_dk) / (1.0 - par.beta_M_dk_l)
+    ss.WLH = rhs_l ** (1.0 / pow_dk)
+    ss.wLH = ss.WLH / ss.P
+    ss.M_dk_l = ss.NLH * (par.beta_M_dk_l / (1.0 - par.beta_M_dk_l)) * (ss.WLH / ss.PM_dk_l)**par.eta_VA_dk
     ss.M_dk_us_l = par.alpha_M_dk_us_l * (ss.PM_dk_us / ss.PM_dk_l)**(-par.eta_M_dk) * ss.M_dk_l
     ss.M_dk_eu_l = (1.0 - par.alpha_M_dk_us_l) * (ss.PM_dk_eu / ss.PM_dk_l)**(-par.eta_M_dk) * ss.M_dk_l
-
-    ss.YHL = ss.ZTH * (((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * ss.NHL**rho_dk
+    ss.YLH = ss.ZTH * (((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * ss.NLH**rho_dk
                         + par.beta_M_dk_l**(1.0/par.eta_VA_dk) * ss.M_dk_l**rho_dk) ** (1.0 / rho_dk))
 
-    # ---- Calibrate inner flat-CES weight from SS gross outputs ----
-    par.omega_TH_H = ss.YHH / (ss.YHH + ss.YHL)
+    # ---- DK production: LL sector (low material, low US export share) ----
+    # Same production technology as LH (same l-params), different export intensity
+    ss.NLL = par.sLL
+    rhs_lx = ((ss.PLL * ss.ZTH)**pow_dk - par.beta_M_dk_l * ss.PM_dk_l**pow_dk) / (1.0 - par.beta_M_dk_l)
+    ss.WLL = rhs_lx ** (1.0 / pow_dk)
+    ss.wLL = ss.WLL / ss.P
+    ss.M_dk_lx = ss.NLL * (par.beta_M_dk_l / (1.0 - par.beta_M_dk_l)) * (ss.WLL / ss.PM_dk_l)**par.eta_VA_dk
+    ss.M_dk_us_lx = par.alpha_M_dk_us_l * (ss.PM_dk_us / ss.PM_dk_l)**(-par.eta_M_dk) * ss.M_dk_lx
+    ss.M_dk_eu_lx = (1.0 - par.alpha_M_dk_us_l) * (ss.PM_dk_eu / ss.PM_dk_l)**(-par.eta_M_dk) * ss.M_dk_lx
+    ss.YLL = ss.ZTH * (((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * ss.NLL**rho_dk
+                        + par.beta_M_dk_l**(1.0/par.eta_VA_dk) * ss.M_dk_lx**rho_dk) ** (1.0 / rho_dk))
+
+    # ---- Calibrate inner flat-CES weights from SS gross outputs ----
+    Y_T_tot = ss.YHH + ss.YHL + ss.YLH + ss.YLL
+    par.omega_TH_HH = ss.YHH / Y_T_tot
+    par.omega_TH_HL = ss.YHL / Y_T_tot
+    par.omega_TH_LH = ss.YLH / Y_T_tot
+    par.omega_TH_LL = ss.YLL / Y_T_tot   # = 1 - sum of above
 
     # ---- Household income ----
     ss.tau = par.tau_ss
     ss.inc_HH = (1.0 - ss.tau) * ss.wHH * ss.NHH
     ss.inc_HL = (1.0 - ss.tau) * ss.wHL * ss.NHL
+    ss.inc_LH = (1.0 - ss.tau) * ss.wLH * ss.NLH
+    ss.inc_LL = (1.0 - ss.tau) * ss.wLL * ss.NLL
     ss.inc_NT = (1.0 - ss.tau) * ss.wNT * ss.NNT
 
     model.solve_hh_ss(do_print=do_print)
@@ -217,7 +247,8 @@ def evaluate_ss(model, do_print=False):
 
     # ---- Government ----
     ss.B = ss.A_hh
-    ss.G = ss.tau * (ss.wHH*ss.NHH + ss.wHL*ss.NHL + ss.wNT*ss.NNT) - ss.r * ss.B
+    ss.G = ss.tau * (ss.wHH*ss.NHH + ss.wHL*ss.NHL + ss.wLH*ss.NLH + ss.wLL*ss.NLL
+                     + ss.wNT*ss.NNT) - ss.r * ss.B
 
     # Monetary policy
     if par.float:
@@ -237,24 +268,40 @@ def evaluate_ss(model, do_print=False):
     ss.CTH = (1.0 - par.alphaF) * ss.CT
     ss.CTF = par.alphaF * ss.CT
 
-    # inner flat-CES: TH-High vs TH-Low (PHH = PHL = PTH = 1 in SS)
-    ss.CTH_H = par.omega_TH_H * ss.CTH
-    ss.CTH_L = (1.0 - par.omega_TH_H) * ss.CTH
+    # inner 4-sector split (all prices = 1 in SS → CTH_i = omega_TH_i * CTH)
+    ss.CTH_HH = par.omega_TH_HH * ss.CTH
+    ss.CTH_HL = par.omega_TH_HL * ss.CTH
+    ss.CTH_LH = par.omega_TH_LH * ss.CTH
+    ss.CTH_LL = par.omega_TH_LL * ss.CTH
 
     # foreign split: EU vs US
     ss.CTF_eu = (1.0 - par.alpha_us) * ss.CTF
     ss.CTF_us = par.alpha_us * ss.CTF
 
-    # total exports and split across EU and US
-    X_tot = ss.YHH + ss.YHL - ss.CTH
-    ss.CTH_eu_s = (1.0 - par.share_X_us) * X_tot
-    ss.CTH_us_s = par.share_X_us * X_tot
+    # total exports and split across EU and US (share_X_us_H/L are calibration inputs)
+    # Compute implied aggregate US share from sector-level export targets
+    X_HH = ss.YHH - ss.CTH_HH
+    X_HL = ss.YHL - ss.CTH_HL
+    X_LH = ss.YLH - ss.CTH_LH
+    X_LL = ss.YLL - ss.CTH_LL
 
-    # sector-specific export splits (same flat-CES shares as domestic, PTH=PHH=PHL=1)
-    ss.CTH_HH_eu_s = par.omega_TH_H * ss.CTH_eu_s
-    ss.CTH_HL_eu_s = (1.0 - par.omega_TH_H) * ss.CTH_eu_s
-    ss.CTH_HH_us_s = par.omega_TH_H * ss.CTH_us_s
-    ss.CTH_HL_us_s = (1.0 - par.omega_TH_H) * ss.CTH_us_s
+    X_us_tot = (par.share_X_us_H * X_HH + par.share_X_us_L * X_HL
+                + par.share_X_us_H * X_LH + par.share_X_us_L * X_LL)
+    X_eu_tot = (X_HH + X_HL + X_LH + X_LL) - X_us_tot
+
+    ss.CTH_eu_s = X_eu_tot
+    ss.CTH_us_s = X_us_tot
+
+    # sector-level exports (same omega_TH weights for EU and US, all prices = 1)
+    ss.CTH_HH_eu_s = par.omega_TH_HH * ss.CTH_eu_s
+    ss.CTH_HL_eu_s = par.omega_TH_HL * ss.CTH_eu_s
+    ss.CTH_LH_eu_s = par.omega_TH_LH * ss.CTH_eu_s
+    ss.CTH_LL_eu_s = par.omega_TH_LL * ss.CTH_eu_s
+
+    ss.CTH_HH_us_s = par.omega_TH_HH * ss.CTH_us_s
+    ss.CTH_HL_us_s = par.omega_TH_HL * ss.CTH_us_s
+    ss.CTH_LH_us_s = par.omega_TH_LH * ss.CTH_us_s
+    ss.CTH_LL_us_s = par.omega_TH_LL * ss.CTH_us_s
 
     ss.M_eu_s = ss.CTH_eu_s
     ss.M_us_s = ss.CTH_us_s
@@ -262,13 +309,17 @@ def evaluate_ss(model, do_print=False):
     par.M_us_s_ss = ss.M_us_s
 
     # ---- Market clearing (should be zero in SS) ----
-    ss.clearing_YHH = ss.YHH - ss.CTH_H - ss.CTH_HH_eu_s - ss.CTH_HH_us_s
-    ss.clearing_YHL = ss.YHL - ss.CTH_L - ss.CTH_HL_eu_s - ss.CTH_HL_us_s
+    ss.clearing_YHH = ss.YHH - ss.CTH_HH - ss.CTH_HH_eu_s - ss.CTH_HH_us_s
+    ss.clearing_YHL = ss.YHL - ss.CTH_HL - ss.CTH_HL_eu_s - ss.CTH_HL_us_s
+    ss.clearing_YLH = ss.YLH - ss.CTH_LH - ss.CTH_LH_eu_s - ss.CTH_LH_us_s
+    ss.clearing_YLL = ss.YLL - ss.CTH_LL - ss.CTH_LL_eu_s - ss.CTH_LL_us_s
     ss.clearing_YNT = ss.YNT - ss.CNT - ss.G
 
     # ---- Accounting ----
     ss.GDP = (ss.PHH*ss.YHH - ss.PM_dk_h*ss.M_dk_h
-              + ss.PHL*ss.YHL - ss.PM_dk_l*ss.M_dk_l
+              + ss.PHL*ss.YHL - ss.PM_dk_h*ss.M_dk_hx
+              + ss.PLH*ss.YLH - ss.PM_dk_l*ss.M_dk_l
+              + ss.PLL*ss.YLL - ss.PM_dk_l*ss.M_dk_lx
               + ss.PNT*ss.YNT) / ss.P
     ss.NX  = ss.GDP - ss.C_hh - ss.G
     ss.NFA = ss.A_hh - ss.B
@@ -278,10 +329,14 @@ def evaluate_ss(model, do_print=False):
     # ---- Labor disutility parameters from SS NKWCs ----
     par.varphiHH = (1.0/par.muw) * (1.0-ss.tau) * ss.wHH * ss.UC_HH_hh / ((ss.NHH/par.sHH)**par.nu)
     par.varphiHL = (1.0/par.muw) * (1.0-ss.tau) * ss.wHL * ss.UC_HL_hh / ((ss.NHL/par.sHL)**par.nu)
+    par.varphiLH = (1.0/par.muw) * (1.0-ss.tau) * ss.wLH * ss.UC_LH_hh / ((ss.NLH/par.sLH)**par.nu)
+    par.varphiLL = (1.0/par.muw) * (1.0-ss.tau) * ss.wLL * ss.UC_LL_hh / ((ss.NLL/par.sLL)**par.nu)
     par.varphiNT = (1.0/par.muw) * (1.0-ss.tau) * ss.wNT * ss.UC_NT_hh / ((ss.NNT/sNT)**par.nu)
 
     ss.NKWCHH_res = 0.0
     ss.NKWCHL_res = 0.0
+    ss.NKWCLH_res = 0.0
+    ss.NKWCLL_res = 0.0
     ss.NKWCNT_res = 0.0
 
 
@@ -298,20 +353,31 @@ def find_ss(model, do_print=False):
         print(f'steady state found in {elapsed(t0)}')
         print(f'{ss.inc_HH = :.3f}')
         print(f'{ss.inc_HL = :.3f}')
+        print(f'{ss.inc_LH = :.3f}')
+        print(f'{ss.inc_LL = :.3f}')
         print(f'{ss.inc_NT = :.3f}')
         print(f'{par.alphaT = :.3f}')
         print(f'{par.alphaF = :.3f}')
-        print(f'{par.omega_TH_H = :.3f}')
+        print(f'{par.omega_TH_HH = :.3f}')
+        print(f'{par.omega_TH_HL = :.3f}')
+        print(f'{par.omega_TH_LH = :.3f}')
+        print(f'{par.omega_TH_LL = :.3f}')
         print(f'{par.varphiHH = :.3f}')
         print(f'{par.varphiHL = :.3f}')
+        print(f'{par.varphiLH = :.3f}')
+        print(f'{par.varphiLL = :.3f}')
         print(f'{par.varphiNT = :.3f}')
         print(f'{ss.YHH = :.3f}')
         print(f'{ss.YHL = :.3f}')
+        print(f'{ss.YLH = :.3f}')
+        print(f'{ss.YLL = :.3f}')
         print(f'{ss.YNT = :.3f}')
         print(f'{ss.M_eu_s = :.3f}')
         print(f'{ss.M_us_s = :.3f}')
         print(f'{ss.clearing_YHH = :12.8f}')
         print(f'{ss.clearing_YHL = :12.8f}')
+        print(f'{ss.clearing_YLH = :12.8f}')
+        print(f'{ss.clearing_YLL = :12.8f}')
         print(f'{ss.clearing_YNT = :12.8f}')
         print(f'{ss.G = :.3f}')
         print(f'{ss.NFA = :.3f}')

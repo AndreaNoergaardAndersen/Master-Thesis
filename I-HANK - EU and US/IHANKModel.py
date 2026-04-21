@@ -19,47 +19,49 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.namespaces = ['par','ss','ini','path','sim']
 
         # b. household
-        self.grids_hh = ['a'] # grids
-        self.pols_hh = ['a'] # policy functions
-        self.inputs_hh = ['beta','ra','inc_HH','inc_HL','inc_NT'] # direct inputs — one income stream per sector
-        self.inputs_hh_z = [] # transition matrix inputs
-        self.outputs_hh = ['a','c','uc_HH','uc_HL','uc_NT','c_HH','c_HL','c_NT'] # outputs
-        self.intertemps_hh = ['vbeg_a'] # intertemporal variables
+        self.grids_hh = ['a']
+        self.pols_hh = ['a']
+        self.inputs_hh = ['beta','ra','inc_HH','inc_HL','inc_LH','inc_LL','inc_NT']
+        self.inputs_hh_z = []
+        self.outputs_hh = ['a','c','uc_HH','uc_HL','uc_LH','uc_LL','uc_NT',
+                           'c_HH','c_HL','c_LH','c_LL','c_NT']
+        self.intertemps_hh = ['vbeg_a']
 
         # c. GE
-        self.shocks = ['ZTH','ZNT', #domestic TFPs
-                       'beta','G', #Domestic preference and fiscal shocks
-                       'i_shock', #domestic monetary shock (keep at zero under peg)
-                       'i_shock_eu', 'Z_eu', # EU natural-rate, monetary shocks and foreign TFP  'piM_eu_eu',
-                       'i_shock_us', 'Z_us', # US natural-rate, monetary shocks and foreign TFP  'piM_us_us',
-                       'tau_x',  # US tariff on DK+EA exports
-                       'tau_m']  # DK+EA tariff on US-origin materials
+        self.shocks = ['ZTH','ZNT',
+                       'beta','G',
+                       'i_shock',
+                       'i_shock_eu', 'Z_eu',
+                       'i_shock_us', 'Z_us',
+                       'tau_x',
+                       'tau_m']
 
-        # Two tradeable sectors (HH=high-input, HL=low-input) + NT = 18 unknowns/targets
-        self.unknowns = ['CB','NNT','NHH','NHL','piWHH','piWHL','piWNT', 'CB_us',
-                         'C_eu', 'N_eu', 'pi_eu', 'i_eu', 'mc_eu',   # EU
-                         'C_us', 'N_us', 'pi_us', 'i_us', 'mc_us']   # US
+        # Four tradeable sectors (HH, HL, LH, LL) + NT
+        self.unknowns = ['CB','NNT','NHH','NHL','NLH','NLL',
+                         'piWHH','piWHL','piWLH','piWLL','piWNT', 'CB_us',
+                         'C_eu', 'N_eu', 'pi_eu', 'i_eu', 'mc_eu',
+                         'C_us', 'N_us', 'pi_us', 'i_us', 'mc_us']
 
-        self.targets = ['NKWCHH_res','NKWCHL_res','NKWCNT_res',
-                        'clearing_YHH','clearing_YHL','clearing_YNT',
-                        'eu_Euler_res', 'eu_NKPC_res', 'eu_TR_res', 'eu_LS_res', 'eu_RC_res', 'UIP_res',
-                        'us_Euler_res', 'us_NKPC_res', 'us_TR_res', 'us_LS_res', 'us_RC_res', 'UIP_res_us']
+        self.targets = ['NKWCHH_res','NKWCHL_res','NKWCLH_res','NKWCLL_res','NKWCNT_res',
+                        'clearing_YHH','clearing_YHL','clearing_YLH','clearing_YLL','clearing_YNT',
+                        'eu_Euler_res','eu_NKPC_res','eu_TR_res','eu_LS_res','eu_RC_res','UIP_res',
+                        'us_Euler_res','us_NKPC_res','us_TR_res','us_LS_res','us_RC_res','UIP_res_us']
 
-        # d. block sequence (order preserved)
+        # d. block sequence
         self.blocks = [
             'blocks.mon_pol',
             'blocks.material_prices',
             'blocks.eu_nk',
             'blocks.us_nk',
-            'blocks.production',   # computes PHH, PHL, YHH, YHL, YNT, sector material demands
-            'blocks.prices',       # computes PTH (flat CES of PHH,PHL), PT, P, real wages
+            'blocks.production',
+            'blocks.prices',
             'blocks.inflation',
             'blocks.central_bank',
             'blocks.government',
             'hh',
             'blocks.NKWCs',
             'blocks.UIP',
-            'blocks.consumption',  # inner nest splits CTH into CTH_H, CTH_L
+            'blocks.consumption',
             'blocks.market_clearing',
             'blocks.accounting',
         ]
@@ -73,59 +75,66 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par = self.par
 
         # a. discrete states
-        par.Nfix = 3  # TH-High (i=0), TH-Low (i=1), NT (i=2)
-        par.Nz = 5    # idiosyncratic productivity
+        par.Nfix = 5  # HH(0), HL(1), LH(2), LL(3), NT(4)
+        par.Nz = 5
 
-        # Employment shares (from Danish sectoral data, Table 1.9)
-        # High-input tradeable (ih_eh + ih_el): 37%+1% = 38%
-        # Low-input tradeable  (il_eh + il_el): 13%+6% = 19%
-        # Non-tradeable: 1 - 0.38 - 0.19 = 0.43
-        par.sHH = 0.38  # share of workers in high-input tradeable sector
-        par.sHL = 0.19  # share of workers in low-input tradeable sector
-        # par.sNT = 1 - par.sHH - par.sHL  (derived, not stored separately)
+        # Employment shares
+        # High-material sectors (HH+HL): total 38%, split evenly
+        par.sHH = 0.19  # high material, high US export share
+        par.sHL = 0.19  # high material, low US export share
+        # Low-material sectors (LH+LL): total 19%, split evenly
+        par.sLH = 0.095 # low material, high US export share
+        par.sLL = 0.095 # low material, low US export share
+        # sNT = 1 - sHH - sHL - sLH - sLL (derived)
 
         # b. preferences
         par.beta = 0.975
-        par.sigma = 2.0  # inverse IES
+        par.sigma = 2.0
 
-        par.alphaT = np.nan  # tradeable share in consumption (calibrated in SS)
-        par.etaT = 2.0       # T vs NT substitution elasticity
+        par.alphaT = np.nan
+        par.etaT = 2.0
 
-        par.alphaF = 1/3     # foreign share inside tradeable bundle
-        par.alpha_us = 0.05   # US share inside foreign tradeable bundle
+        par.alphaF = 1/3
+        par.alpha_us = 0.05
 
-        par.etaF = 2.0       # home vs foreign substitution elasticity
-        par.etaF_us = 2.0    # EU vs US substitution elasticity
+        par.etaF = 2.0
+        par.etaF_us = 2.0
 
-        # Inner nest: flat CES between TH-High and TH-Low (home goods only)
-        par.omega_TH_H = np.nan  # share of TH-High in home tradeable bundle (calibrated in SS)
-        par.eta_TH = 2.0         # elasticity between TH-High and TH-Low
+        # Home-tradeable 4-sector CES weights (calibrated in SS, shared by all buyers)
+        par.omega_TH_HH = np.nan
+        par.omega_TH_HL = np.nan
+        par.omega_TH_LH = np.nan
+        par.omega_TH_LL = np.nan  # stored explicitly for symmetry
+        par.eta_TH = 2.0
 
-        # Labor disutility (sector-specific, calibrated in SS)
+        # Labor disutility (calibrated in SS)
         par.varphiHH = np.nan
         par.varphiHL = np.nan
+        par.varphiLH = np.nan
+        par.varphiLL = np.nan
         par.varphiNT = np.nan
-        par.nu = 1.0  # Frisch elasticity of labor supply
+        par.nu = 1.0
 
         # c. income parameters
         par.rho_z = 0.95
         par.sigma_psi = 0.10
 
         # d. price setting
-        par.kappa = 0.1   # slope of wage Phillips curve
-        par.muw = 1.2     # wage mark-up
+        par.kappa = 0.1
+        par.muw = 1.2
 
-        # Danish production — sector-specific CES parameters (Table 1.3)
-        par.beta_M_dk_h = 1/3      # material share, high-input sector (omega_H)
-        par.beta_M_dk_l = 1/3     # material share, low-input sector  (omega_L)
-        par.alpha_M_dk_us_h = 0.27  # US share in materials, high-input sector (alpha_H)
-        par.alpha_M_dk_us_l = 0.17  # US share in materials, low-input sector  (alpha_L)
-        par.eta_VA_dk = 1.50        # outer CES elasticity (labor vs materials), shared
-        par.eta_M_dk = 1.50         # inner CES elasticity (EU vs US materials), shared
+        # Danish production — material parameters shared within H/L group
+        par.beta_M_dk_h = 1/3       # material share, high-material sectors (HH, HL)
+        par.beta_M_dk_l = 1/3       # material share, low-material sectors  (LH, LL)
+        par.alpha_M_dk_us_h = 0.27  # US share in materials, high-material sectors
+        par.alpha_M_dk_us_l = 0.17  # US share in materials, low-material sectors
+        par.eta_VA_dk = 1.50
+        par.eta_M_dk = 1.50
 
-        # e. foreign economy
-        par.share_X_us = 0.1  # share of DK exports going to US in SS
-        par.eta_s = 2.0       # Armington elasticity of foreign demand
+        # e. foreign economy — sector-specific US export shares
+        par.share_X_us_H = 0.20   # HH and LH: high US export share
+        par.share_X_us_L = 0.05   # HL and LL: low US export share
+        par.eta_s = 2.0
 
         # EU economy
         par.i_eu_ss = 0.005
@@ -216,7 +225,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.std_i_shock_us = 0.00
 
         # i. misc.
-        par.T = 500
+        par.T = 200
 
         par.max_iter_solve = 50_000
         par.max_iter_simulate = 50_000
