@@ -78,7 +78,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.Nfix = 5  # HH(0), HL(1), LH(2), LL(3), NT(4)
         par.Nz = 5
 
-        # Employment shares
+        # Employment shares - estimated from data 
         # High-material sectors (HH+HL): total 38%, split evenly
         par.sHH = 0.19  # high material, high US export share
         par.sHL = 0.19  # high material, low US export share
@@ -88,24 +88,24 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # sNT = 1 - sHH - sHL - sLH - sLL (derived)
 
         # b. preferences
-        par.beta = 0.975
-        par.sigma = 2.0
+        par.beta = 0.975 # check: looks low for quarter benchmark 
+        par.sigma = 2.0 # standard CRRA (Druedahl)
 
         par.alphaT = np.nan
-        par.etaT = 2.0
+        par.etaT = 2.0 # check - should potentially be from MAKRO, consumption nest
 
-        par.alphaF = 1/3
-        par.alpha_us = 0.05
+        par.alphaF = 1/3 # estimated from data 
+        par.alpha_us = 0.05 # estimated from data 
 
-        par.etaF = 2.0
-        par.etaF_us = 2.0
+        par.etaF = 2.0 # standard trade elasticity (Druedahl) - however, long run ???? 
+        par.etaF_us = 2.0 # check 
 
         # Home-tradeable 4-sector CES weights (calibrated in SS, shared by all buyers)
-        par.omega_TH_HH = np.nan
+        par.omega_TH_HH = np.nan 
         par.omega_TH_HL = np.nan
         par.omega_TH_LH = np.nan
         par.omega_TH_LL = np.nan  # stored explicitly for symmetry
-        par.eta_TH = 2.0
+        par.eta_TH = 2.0 # check 
 
         # Labor disutility (calibrated in SS)
         par.varphiHH = np.nan
@@ -113,46 +113,46 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphiLH = np.nan
         par.varphiLL = np.nan
         par.varphiNT = np.nan
-        par.nu = 1.0
+        par.nu = 1.0 # check: literature often closer to .5 (Druedahl)
 
         # c. income parameters
-        par.rho_z = 0.95
-        par.sigma_psi = 0.10
+        par.rho_z = 0.95 # Druedahl is .966
+        par.sigma_psi = 0.10 # Druedahl is .13
 
         # d. price setting
-        par.kappa = 0.1
-        par.muw = 1.2
+        par.kappa = 0.1 # standard in these models (Druedahl)
+        par.muw = 1.2 # standard markup (Druedahl)
 
         # Danish production — material parameters shared within H/L group
         par.beta_M_dk_h = 1/3       # material share, high-material sectors (HH, HL)
         par.beta_M_dk_l = 1/3       # material share, low-material sectors  (LH, LL)
         par.alpha_M_dk_us_h = 0.27  # US share in materials, high-material sectors
         par.alpha_M_dk_us_l = 0.17  # US share in materials, low-material sectors
-        par.eta_VA_dk = 1.50
-        par.eta_M_dk = 1.50
+        par.eta_VA_dk = 1.50 # check - looks higher than MAKROs 
+        par.eta_M_dk = 1.50 # check - also seems high 
 
         # e. foreign economy — sector-specific US export shares
         par.share_X_us_H = 0.20   # HH and LH: high US export share
         par.share_X_us_L = 0.05   # HL and LL: low US export share
-        par.eta_s = 2.0
+        par.eta_s = 2.0 # check - looks low compared to danish export elasticities (approx 5 in DREAM) 
 
         # EU economy
-        par.i_eu_ss = 0.005
-        par.beta_eu = 1.0/(1.0+par.i_eu_ss)
+        par.i_eu_ss = 0.005 
+        par.beta_eu = 1.0/(1.0+par.i_eu_ss) 
         par.sigma_eu = par.sigma
         par.nu_eu = par.nu
         par.varphi_eu = np.nan
 
         par.kappa_eu = 0.05
-        par.phi_pi_eu = 1.5
+        par.phi_pi_eu = 1.5 # taylor rule - standard
 
         par.W_eu_ss = 1.0
         par.Y_eu_ss = 1.0
         par.chi_M_eu = 1.0
 
-        par.beta_M_eu = 0.10
+        par.beta_M_eu = 0.10 # check - create weighted average from data 
         par.eta_VA_eu = 1.50
-        par.alpha_M_eu_us = 0.10
+        par.alpha_M_eu_us = 0.10 # check - create weighted average from data 
         par.eta_M_eu = 1.50
 
         par.M_eu_s_ss = np.nan
@@ -165,29 +165,29 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphi_us = np.nan
 
         par.kappa_us = 0.05
-        par.phi_pi_us = 1.5
+        par.phi_pi_us = 1.5 # taylor rule - standard? 
 
         par.W_us_ss = 1.0
         par.Y_us_ss = 1.0
         par.chi_M_us = 1.0
 
-        par.beta_M_us = 0.10
+        par.beta_M_us = 0.10 # create weighted average from data
         par.eta_VA_us = 1.50
-        par.alpha_M_us_us = 0.10
+        par.alpha_M_us_us = 0.10 # create weighted average from data
         par.eta_M_us = 1.50
-
+        
         par.M_us_s_ss = np.nan
 
         # f. government
-        par.tau_ss = 0.30
-        par.omega = 0.10
-        par.phi_B = 1/3
+        par.tau_ss = 0.30 # check / ask 
+        par.omega = 0.10 # check / ask 
+        par.phi_B = 1/3 # check / ask 
 
-        par.phi_NFA = 0.001
+        par.phi_NFA = 0.001 # redundant 
 
         # central bank
         par.float = False
-        par.phi = 1.5
+        par.phi = 1.5 # redundant? 
 
         # g. grids
         par.a_min = 0.0
