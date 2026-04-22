@@ -49,10 +49,14 @@ def mon_pol(par,ini,ss,E,CB, E_us, CB_us):
 def material_prices(par, ini, ss,
                     E, E_us,
                     PM_eu_eu, PM_us_us, PM_eu_us, PM_eu, PM_us_eu, PM_us,
-                    PM_dk_eu, PM_dk_us, tau_m, tau_x, PF_eu_s, pi_eu, PF_us_s, pi_us):
+                    PM_dk_eu, PM_dk_us, tau_m, tau_x, PT_eu_s, pi_T_eu, PF_us_s, pi_us):
+    """
+    PT_eu_s = EU tradable CPI in EUR (drives material costs and Armington).
+    pi_T_eu = EU tradable inflation (unknown, drives T-sector NKPC in eu_nk).
+    """
 
-    price_from_inflation(PF_eu_s, pi_eu, par.T, ss.PF_eu_s)
-    PM_eu_eu[:]=PF_eu_s
+    price_from_inflation(PT_eu_s, pi_T_eu, par.T, ss.PT_eu_s)
+    PM_eu_eu[:] = PT_eu_s
 
     price_from_inflation(PF_us_s, pi_us, par.T, ss.PF_us_s)
     PM_us_us[:]=PF_us_s
@@ -68,25 +72,40 @@ def material_prices(par, ini, ss,
 
 @nb.njit
 def eu_nk(par, ini, ss,
-          Z_eu, i_shock_eu,
-          Y_eu, C_eu, N_eu, pi_eu, i_eu,
-          PF_eu_s, rF_eu, M_eu_s, mc_eu, W_eu,
+          Z_eu, ZNT_eu, i_shock_eu,
+          Y_eu, C_eu, N_eu, NNT_eu, pi_T_eu, pi_NT_eu, i_eu,
+          PF_eu_s, PT_eu_s, PNT_eu_s, rF_eu, M_eu_s, mc_eu, W_eu,
+          C_T_eu, pi_eu,
           PM_eu_eu, PM_eu_us, PM_eu, M_eu, M_eu_eu, M_eu_us,
-          eu_Euler_res, eu_LS_res, eu_NKPC_res, eu_TR_res, eu_RC_res,
+          eu_Euler_res, eu_LS_res, eu_NKPC_res, eu_NKPC_NT_res,
+          eu_TR_res, eu_RC_res, eu_NT_res,
           tau_m):
 
-    C_eu_plus = lead(C_eu, ss.C_eu)
+    # NT price level from pi_NT_eu (unknown)
+    price_from_inflation(PNT_eu_s, pi_NT_eu, par.T, ss.PNT_eu_s)
+
+    # PT_eu_s already built in material_prices from pi_T_eu (unknown)
+    # Aggregate CPI: CES of tradable and non-tradable price levels
+    PF_eu_s[:] = price_index(PT_eu_s, PNT_eu_s, par.etaT_eu, par.alphaT_eu)
+
+    # Derived aggregate inflation (used in Euler, Taylor rule, real rate)
+    pi_eu[:] = inflation_from_price(PF_eu_s, ini.PF_eu_s)
     pi_eu_plus = lead(pi_eu, ss.pi_eu)
 
+    # Real interest rate deflated by aggregate CPI
     rF_eu[:] = (1.0 + i_eu) / (1.0 + pi_eu_plus) - 1.0
 
-    pm_eu = PM_eu / PF_eu_s
-    pow_ = 1.0 - par.eta_VA_eu
-    rhs = ((mc_eu * Z_eu) ** pow_ - par.beta_M_eu * (pm_eu ** pow_)) / (1.0 - par.beta_M_eu)
-    w_eu = rhs ** (1.0 / pow_)
-    W_eu[:] = PF_eu_s * w_eu
+    # Leads for NKPCs
+    pi_T_eu_plus  = lead(pi_T_eu,  ss.pi_T_eu)
+    pi_NT_eu_plus = lead(pi_NT_eu, ss.pi_NT_eu)
 
-    ratio_MN = (par.beta_M_eu / (1.0 - par.beta_M_eu)) * (w_eu / pm_eu) ** par.eta_VA_eu
+    # ---- Tradable sector: cost function solved in nominal space ----
+    # W_eu/PM_eu = w_T/pm_eu (PT_eu_s cancels), so ratio_MN uses W_eu/PM_eu directly
+    pow_ = 1.0 - par.eta_VA_eu
+    rhs  = ((mc_eu * Z_eu * PT_eu_s)**pow_ - par.beta_M_eu * PM_eu**pow_) / (1.0 - par.beta_M_eu)
+    W_eu[:] = rhs ** (1.0 / pow_)
+
+    ratio_MN = (par.beta_M_eu / (1.0 - par.beta_M_eu)) * (W_eu / PM_eu) ** par.eta_VA_eu
     M_eu[:] = N_eu * ratio_MN
 
     M_eu_us[:] = par.alpha_M_eu_us * (PM_eu_us / PM_eu) ** (-par.eta_M_eu) * M_eu
@@ -96,15 +115,44 @@ def eu_nk(par, ini, ss,
     inside = (1.0 - par.beta_M_eu)**(1.0/par.eta_VA_eu) * (N_eu ** rho) + par.beta_M_eu**(1.0/par.eta_VA_eu) * (M_eu ** rho)
     Y_eu[:] = Z_eu * (inside ** (1.0 / rho))
 
-    eu_Euler_res[:] = C_eu**(-par.sigma_eu) - par.beta_eu * (1.0 + rF_eu) * C_eu_plus**(-par.sigma_eu)
-    eu_LS_res[:] = par.varphi_eu * N_eu**(par.nu_eu) - w_eu * C_eu**(-par.sigma_eu)
+    # ---- NT sector ----
+    Y_NT_eu = ZNT_eu * NNT_eu
 
+    # ---- Household decisions ----
+    C_T_eu[:]  = par.alphaT_eu       * (PT_eu_s  / PF_eu_s) ** (-par.etaT_eu) * C_eu
+    C_NT_eu    = (1.0 - par.alphaT_eu) * (PNT_eu_s / PF_eu_s) ** (-par.etaT_eu) * C_eu
+
+    # ---- Residuals ----
+    C_eu_plus = lead(C_eu, ss.C_eu)
+    eu_Euler_res[:] = C_eu**(-par.sigma_eu) - par.beta_eu * (1.0 + rF_eu) * C_eu_plus**(-par.sigma_eu)
+
+    # Labor supply: real wage in terms of aggregate CPI basket
+    w_agg = W_eu / PF_eu_s
+    eu_LS_res[:] = par.varphi_eu * (N_eu + NNT_eu)**(par.nu_eu) - w_agg * C_eu**(-par.sigma_eu)
+
+    # Aggregate resource constraint (deflated by PF_eu_s)
     tariff_rev_eu = tau_m / (1.0 + tau_m) * (PM_eu_us / PF_eu_s) * M_eu_us
-    eu_RC_res[:] = Y_eu - C_eu - (PM_eu / PF_eu_s) * M_eu + tariff_rev_eu
-    eu_NKPC_res[:] = pi_eu - (par.beta_eu * pi_eu_plus + par.kappa_eu * (mc_eu - 1.0))
+    eu_RC_res[:] = ((PT_eu_s / PF_eu_s) * Y_eu
+                    + (PNT_eu_s / PF_eu_s) * Y_NT_eu
+                    - C_eu
+                    - (PM_eu / PF_eu_s) * M_eu
+                    + tariff_rev_eu)
+
+    # T-sector NKPC
+    eu_NKPC_res[:] = pi_T_eu - (par.beta_eu * pi_T_eu_plus + par.kappa_eu * (mc_eu - 1.0))
+
+    # NT-sector NKPC (mc_NT_eu = W_eu / PNT_eu_s)
+    mc_NT_eu = W_eu / PNT_eu_s
+    eu_NKPC_NT_res[:] = pi_NT_eu - (par.beta_eu * pi_NT_eu_plus + par.kappa_eu * (mc_NT_eu - 1.0))
+
+    # Taylor rule uses aggregate inflation pi_eu
     eu_TR_res[:] = i_eu - (ss.i_eu + par.phi_pi_eu * (pi_eu - ss.pi_eu) + i_shock_eu)
 
-    M_eu_s[:] = ss.M_eu_s * (C_eu / ss.C_eu)
+    # NT market clearing
+    eu_NT_res[:] = Y_NT_eu - C_NT_eu
+
+    # Export market size scales with tradable consumption
+    M_eu_s[:] = ss.M_eu_s * (C_T_eu / ss.C_T_eu)
 
 @nb.njit
 def us_nk(par, ini, ss,
@@ -234,7 +282,7 @@ def production(par, ini, ss,
 
 @nb.njit
 def prices(par, ini, ss,
-           PF_eu_s, PF_us_s, E, E_us,
+           PT_eu_s, PF_us_s, E, E_us,
            PHH, PHL, PLH, PLL, PNT, WHH, WHL, WLH, WLL, WNT,
            PF_eu, PF_us, PF_TF,
            PTH, PTH_eu_s, PTH_us_s,
@@ -249,7 +297,8 @@ def prices(par, ini, ss,
     """
 
     # a. foreign prices in DKK
-    PF_eu[:] = PF_eu_s * E
+    # Danish HH face EU tradable price (NT goods are not traded)
+    PF_eu[:] = PT_eu_s * E
     PF_us[:] = PF_us_s * E_us
 
     # b. home tradeable price index (shared across domestic, EU and US buyers)

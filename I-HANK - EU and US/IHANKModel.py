@@ -31,7 +31,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.shocks = ['ZTH','ZNT',
                        'beta','G',
                        'i_shock',
-                       'i_shock_eu', 'Z_eu',
+                       'i_shock_eu', 'Z_eu', 'ZNT_eu',
                        'i_shock_us', 'Z_us',
                        'tau_x',
                        'tau_m']
@@ -39,12 +39,12 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # Four tradeable sectors (HH, HL, LH, LL) + NT
         self.unknowns = ['CB','NNT','NHH','NHL','NLH','NLL',
                          'piWHH','piWHL','piWLH','piWLL','piWNT', 'CB_us',
-                         'C_eu', 'N_eu', 'pi_eu', 'i_eu', 'mc_eu',
+                         'C_eu', 'N_eu', 'NNT_eu', 'pi_T_eu', 'pi_NT_eu', 'i_eu', 'mc_eu',
                          'C_us', 'N_us', 'pi_us', 'i_us', 'mc_us']
 
         self.targets = ['NKWCHH_res','NKWCHL_res','NKWCLH_res','NKWCLL_res','NKWCNT_res',
                         'clearing_YHH','clearing_YHL','clearing_YLH','clearing_YLL','clearing_YNT',
-                        'eu_Euler_res','eu_NKPC_res','eu_TR_res','eu_LS_res','eu_RC_res','UIP_res',
+                        'eu_Euler_res','eu_NKPC_res','eu_NKPC_NT_res','eu_TR_res','eu_LS_res','eu_RC_res','eu_NT_res','UIP_res',
                         'us_Euler_res','us_NKPC_res','us_TR_res','us_LS_res','us_RC_res','UIP_res_us']
 
         # d. block sequence
@@ -157,6 +157,10 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         par.M_eu_s_ss = np.nan
 
+        # EU non-tradable sector
+        par.alphaT_eu = 0.70   # tradable share in EU consumption (free parameter)
+        par.etaT_eu  = 1.50    # T vs NT substitution elasticity in EU
+
         # US economy
         par.i_us_ss = 0.005
         par.beta_us = 1.0/(1.0+par.i_us_ss)
@@ -219,6 +223,10 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.jump_i_shock_eu = 0.00
         par.rho_i_shock_eu = 0.00
         par.std_i_shock_eu = 0.00
+
+        par.jump_ZNT_eu = 0.00
+        par.rho_ZNT_eu = 0.00
+        par.std_ZNT_eu = 0.00
 
         par.jump_i_shock_us = 0.00
         par.rho_i_shock_us = 0.00

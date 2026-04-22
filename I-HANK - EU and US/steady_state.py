@@ -86,8 +86,10 @@ def evaluate_ss(model, do_print=False):
     ss.eu_Euler_res = 0.0
     ss.eu_LS_res = 0.0
     ss.eu_NKPC_res = 0.0
+    ss.eu_NKPC_NT_res = 0.0
     ss.eu_TR_res = 0.0
     ss.eu_RC_res = 0.0
+    ss.eu_NT_res = 0.0
     ss.i_shock_eu = 0.0
 
     # US NK steady state
@@ -106,7 +108,7 @@ def evaluate_ss(model, do_print=False):
     ss.i_shock_us = 0.0
 
     # normalize prices/exchange rates to 1 in SS
-    for varname in ['PF_eu_s', 'E', 'PTH_eu_s', 'Q', 'PF_eu',
+    for varname in ['PF_eu_s', 'PT_eu_s', 'PNT_eu_s', 'E', 'PTH_eu_s', 'Q', 'PF_eu',
                     'Q_us', 'PF_us_s', 'E_us', 'PF_us', 'PTH_us_s',
                     'PF_TF', 'PTH', 'PT', 'PNT', 'P',
                     # sector output prices and nominal wages (= 1 in SS)
@@ -121,7 +123,7 @@ def evaluate_ss(model, do_print=False):
         ss.__dict__[varname] = 1.0
 
     # zero inflation in SS
-    for varname in ['pi_F_eu_s', 'pi_F_eu', 'pi_TH_eu_s', 'pi_eu',
+    for varname in ['pi_F_eu_s', 'pi_F_eu', 'pi_TH_eu_s', 'pi_eu', 'pi_NT_eu', 'pi_T_eu',
                     'pi_F_us_s', 'pi_F_us', 'pi_TH_us_s', 'pi_us',
                     'pi_FF', 'pi_TH', 'pi_T', 'pi_NT', 'pi',
                     'pi_PHH', 'pi_PHL', 'pi_PLH', 'pi_PLL',
@@ -143,15 +145,30 @@ def evaluate_ss(model, do_print=False):
     # ---- EU materials steady state ----
     ss.PM_eu_us = ss.PM_us_us * ss.E_us / ss.E
     ss.PM_eu = blocks.price_index(ss.PM_eu_us, ss.PM_eu_eu, par.eta_M_eu, par.alpha_M_eu_us)
-    ss.W_eu = ss.PF_eu_s
-    ss.M_eu = ss.N_eu * (par.beta_M_eu / (1.0 - par.beta_M_eu)) * ((ss.W_eu/ss.PF_eu_s) / (ss.PM_eu/ss.PF_eu_s))**par.eta_VA_eu
+    # In SS all prices = 1, so PT_eu_s = PNT_eu_s = PF_eu_s = 1; W_eu = PT_eu_s * w_eu
+    ss.W_eu = ss.PT_eu_s   # = 1 in SS
+    w_eu_ss = ss.W_eu / ss.PT_eu_s  # = 1 in SS
+    ss.M_eu = ss.N_eu * (par.beta_M_eu / (1.0 - par.beta_M_eu)) * (w_eu_ss / (ss.PM_eu / ss.PF_eu_s))**par.eta_VA_eu
     ss.M_eu_us = par.alpha_M_eu_us * (ss.PM_eu_us / ss.PM_eu)**(-par.eta_M_eu) * ss.M_eu
     ss.M_eu_eu = (1.0 - par.alpha_M_eu_us) * (ss.PM_eu_eu / ss.PM_eu)**(-par.eta_M_eu) * ss.M_eu
     rho_eu = (par.eta_VA_eu - 1.0) / par.eta_VA_eu
     ss.Y_eu = ss.Z_eu * (((1.0 - par.beta_M_eu)**(1.0/par.eta_VA_eu) * ss.N_eu**rho_eu
                           + par.beta_M_eu**(1.0/par.eta_VA_eu) * ss.M_eu**rho_eu) ** (1.0 / rho_eu))
-    ss.C_eu = ss.Y_eu - (ss.PM_eu / ss.PF_eu_s) * ss.M_eu
-    par.varphi_eu = (ss.W_eu / ss.PF_eu_s) * ss.C_eu**(-par.sigma_eu) / (ss.N_eu**par.nu_eu)
+
+    # ---- EU NT sector (all prices = 1 in SS) ----
+    ss.ZNT_eu = 1.0
+    # NT output and consumption (all prices = 1): C_NT_eu = (1-alphaT_eu)*C_eu
+    # NT market clearing: Y_NT_eu = C_NT_eu => ZNT_eu * NNT_eu = (1-alphaT_eu)*C_eu
+    # T resource constraint: Y_eu - C_T_eu - M_eu = 0 => C_T_eu = Y_eu - M_eu
+    # C_eu = C_T_eu / alphaT_eu  (since all prices = 1 => C_T_eu = alphaT_eu * C_eu)
+    ss.C_T_eu = ss.Y_eu - (ss.PM_eu / ss.PF_eu_s) * ss.M_eu
+    ss.C_eu   = ss.C_T_eu / par.alphaT_eu
+
+    C_NT_eu_ss = (1.0 - par.alphaT_eu) * ss.C_eu
+    ss.NNT_eu  = C_NT_eu_ss / ss.ZNT_eu
+
+    # varphi_eu from labor supply: varphi*(N_eu+NNT_eu)^nu = w_eu * C_eu^(-sigma)
+    par.varphi_eu = w_eu_ss * ss.C_eu**(-par.sigma_eu) / ((ss.N_eu + ss.NNT_eu)**par.nu_eu)
 
     # ---- US materials steady state ----
     ss.PM_us_eu = ss.PM_eu_eu * ss.E / ss.E_us
