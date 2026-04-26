@@ -307,7 +307,9 @@ def evaluate_ss(model, do_print=False):
 
     # foreign split: EU vs US
     ss.CTF_eu = (1.0 - par.alpha_us) * ss.CTF
+    
     ss.CTF_us = par.alpha_us * ss.CTF
+    ss.CTF_us_res=0.0
 
     # total exports and split across EU and US (share_X_us_H/L are calibration inputs)
     # Compute implied aggregate US share from sector-level export targets

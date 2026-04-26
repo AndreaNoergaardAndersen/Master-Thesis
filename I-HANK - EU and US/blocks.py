@@ -327,7 +327,7 @@ def prices(par, ini, ss,
            PF_eu, PF_us, PF_TF,
            PTH, PTH_eu_s, PTH_us_s,
            PT, P, Q, Q_us,
-           wHH, wHL, wLH, wLL, wNT, tau_x):
+           wHH, wHL, wLH, wLL, wNT, tau_x, tau_m):
     """
     Price indices and real exchange rates.
     PTH = single 4-sector CES aggregate (omega_TH weights), shared by all buyers.
@@ -339,8 +339,8 @@ def prices(par, ini, ss,
     # a. foreign prices in DKK
     # Danish HH face EU tradable price (NT goods are not traded)
     PF_eu[:] = PT_eu_s * E
+    #PF_us[:] = (1+tau_m) * PT_us_s * E_us
     PF_us[:] = PT_us_s * E_us
-
     # b. home tradeable price index (shared across domestic, EU and US buyers)
     PTH[:] = price_index_4(PHH, PHL, PLH, PLL, par.eta_TH,
                            par.omega_TH_HH, par.omega_TH_HL, par.omega_TH_LH, par.omega_TH_LL)
@@ -418,14 +418,14 @@ def government(par, ini, ss,
                ra, G, B, tau,
                inc_HH, inc_HL, inc_LH, inc_LL, inc_NT,
                M_dk_us_h, M_dk_us_hx, M_dk_us_l, M_dk_us_lx,
-               PM_dk_us, tau_m):
+               PM_dk_us, tau_m, PF_us, CTF_us):
     sNT = 1.0 - par.sHH - par.sHL - par.sLH - par.sLL
     for t in range(par.T):
         tax_base = (wHH[t]*NHH[t] + wHL[t]*NHL[t]
                     + wLH[t]*NLH[t] + wLL[t]*NLL[t] + wNT[t]*NNT[t])
         B_lag = prev(B, t, ini.B)
         M_us_total = M_dk_us_h[t] + M_dk_us_hx[t] + M_dk_us_l[t] + M_dk_us_lx[t]
-        revenue = tau_m[t]/(1+tau_m[t]) * PM_dk_us[t] / P[t] * M_us_total
+        revenue = tau_m[t]/(1+tau_m[t]) * PM_dk_us[t] / P[t] * M_us_total #+ tau_m[t]/(1+tau_m[t]) * PF_us[t] / P[t] *CTF_us[t]
         B[t] = ss.B + par.phi_B*((B_lag - ss.B) - revenue)
         tau[t] = ((1.0 + ra[t])*B_lag + PNT[t]/P[t]*G[t] - revenue - B[t]) / tax_base
         inc_HH[:] = (1-tau)*wHH*NHH
@@ -482,7 +482,8 @@ def consumption(par, ini, ss,
                 CTH, CTH_HH, CTH_HL, CTH_LH, CTH_LL,
                 CTH_eu_s, CTH_us_s,
                 CTH_HH_eu_s, CTH_HL_eu_s, CTH_LH_eu_s, CTH_LL_eu_s,
-                CTH_HH_us_s, CTH_HL_us_s, CTH_LH_us_s, CTH_LL_us_s):
+                CTH_HH_us_s, CTH_HL_us_s, CTH_LH_us_s, CTH_LL_us_s,
+                CTF_us_res):
     """
     Consumption allocation with 4 home-tradeable sectors.
 
@@ -509,7 +510,7 @@ def consumption(par, ini, ss,
     CTH_LL[:] = par.omega_TH_LL * (PLL / PTH)**(-par.eta_TH) * CTH
 
     # d. EU vs US inside foreign bundle
-    CTF_us[:] = par.alpha_us      * (PF_us / PF_TF)**(-par.etaF_us) * CTF
+    CTF_us_res[:] = CTF_us - par.alpha_us      * (PF_us / PF_TF)**(-par.etaF_us) * CTF
     CTF_eu[:] = (1-par.alpha_us)  * (PF_eu / PF_TF)**(-par.etaF_us) * CTF
 
     # e. total export demand from EU and US (Armington on aggregate PTH)
@@ -561,10 +562,11 @@ def accounting(par, ini, ss,
                PM_dk_h,  M_dk_h,  PM_dk_l,  M_dk_l,
                M_dk_hx, M_dk_lx,
                tau_m, PM_dk_us,
-               M_dk_us_h, M_dk_us_hx, M_dk_us_l, M_dk_us_lx):
+               M_dk_us_h, M_dk_us_hx, M_dk_us_l, M_dk_us_lx,
+               PF_us, CTF_us):
 
     M_us_total = M_dk_us_h + M_dk_us_hx + M_dk_us_l + M_dk_us_lx
-    tariff_rev = tau_m/(1+tau_m) * PM_dk_us/P * M_us_total
+    tariff_rev = tau_m/(1+tau_m) * PM_dk_us/P * M_us_total #+ tau_m/(1+tau_m) * PF_us/P * CTF_us
 
     # GDP = value added across all sectors
     GDP[:] = (PHH*YHH - PM_dk_h*M_dk_h

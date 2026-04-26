@@ -40,12 +40,14 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.unknowns = ['CB','NNT','NHH','NHL','NLH','NLL',
                          'piWHH','piWHL','piWLH','piWLL','piWNT', 'CB_us',
                          'C_eu', 'N_eu', 'NNT_eu', 'pi_T_eu', 'pi_NT_eu', 'i_eu', 'mc_eu',
-                         'C_us', 'N_us', 'NNT_us', 'pi_T_us', 'pi_NT_us', 'i_us', 'mc_us']
+                         'C_us', 'N_us', 'NNT_us', 'pi_T_us', 'pi_NT_us', 'i_us', 'mc_us',
+                         'CTF_us']
 
         self.targets = ['NKWCHH_res','NKWCHL_res','NKWCLH_res','NKWCLL_res','NKWCNT_res',
                         'clearing_YHH','clearing_YHL','clearing_YLH','clearing_YLL','clearing_YNT',
                         'eu_Euler_res','eu_NKPC_res','eu_NKPC_NT_res','eu_TR_res','eu_LS_res','eu_RC_res','eu_NT_res','UIP_res',
-                        'us_Euler_res','us_NKPC_res','us_NKPC_NT_res','us_TR_res','us_LS_res','us_RC_res','us_NT_res','UIP_res_us']
+                        'us_Euler_res','us_NKPC_res','us_NKPC_NT_res','us_TR_res','us_LS_res','us_RC_res','us_NT_res','UIP_res_us',
+                        'CTF_us_res']
 
         # d. block sequence
         self.blocks = [
