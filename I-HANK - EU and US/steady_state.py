@@ -98,18 +98,21 @@ def evaluate_ss(model, do_print=False):
     ss.mc_us = 1.0
     ss.i_us = par.i_us_ss
     ss.Z_us = 1.0
+    ss.ZNT_us = 1.0
     ss.rF_us = par.i_us_ss
 
     ss.us_Euler_res = 0.0
     ss.us_LS_res = 0.0
     ss.us_NKPC_res = 0.0
+    ss.us_NKPC_NT_res = 0.0
     ss.us_TR_res = 0.0
     ss.us_RC_res = 0.0
+    ss.us_NT_res = 0.0
     ss.i_shock_us = 0.0
 
     # normalize prices/exchange rates to 1 in SS
     for varname in ['PF_eu_s', 'PT_eu_s', 'PNT_eu_s', 'E', 'PTH_eu_s', 'Q', 'PF_eu',
-                    'Q_us', 'PF_us_s', 'E_us', 'PF_us', 'PTH_us_s',
+                    'Q_us', 'PF_us_s', 'PT_us_s', 'PNT_us_s', 'E_us', 'PF_us', 'PTH_us_s',
                     'PF_TF', 'PTH', 'PT', 'PNT', 'P',
                     # sector output prices and nominal wages (= 1 in SS)
                     'PHH', 'PHL', 'PLH', 'PLL', 'WHH', 'WHL', 'WLH', 'WLL', 'WNT',
@@ -124,7 +127,7 @@ def evaluate_ss(model, do_print=False):
 
     # zero inflation in SS
     for varname in ['pi_F_eu_s', 'pi_F_eu', 'pi_TH_eu_s', 'pi_eu', 'pi_NT_eu', 'pi_T_eu',
-                    'pi_F_us_s', 'pi_F_us', 'pi_TH_us_s', 'pi_us',
+                    'pi_F_us_s', 'pi_F_us', 'pi_TH_us_s', 'pi_us', 'pi_T_us', 'pi_NT_us',
                     'pi_FF', 'pi_TH', 'pi_T', 'pi_NT', 'pi',
                     'pi_PHH', 'pi_PHL', 'pi_PLH', 'pi_PLL',
                     'piWHH', 'piWHL', 'piWLH', 'piWLL', 'piWNT',
@@ -138,7 +141,7 @@ def evaluate_ss(model, do_print=False):
     ss.UIP_res_us = 0.0
     ss.i_shock = 0.0
 
-    # tariffs = 0 in SS
+    # tariffs = 0 in SS, so revenue fund is empty
     ss.tau_m = 0.0
     ss.tau_x = 0.0
 
@@ -173,15 +176,26 @@ def evaluate_ss(model, do_print=False):
     # ---- US materials steady state ----
     ss.PM_us_eu = ss.PM_eu_eu * ss.E / ss.E_us
     ss.PM_us = blocks.price_index(ss.PM_us_us, ss.PM_us_eu, par.eta_M_us, par.alpha_M_us_us)
-    ss.W_us = ss.PF_us_s
-    ss.M_us = ss.N_us * (par.beta_M_us / (1.0 - par.beta_M_us)) * ((ss.W_us/ss.PF_us_s) / (ss.PM_us/ss.PF_us_s))**par.eta_VA_us
+    ss.W_us = ss.PT_us_s   # = 1 in SS
+    w_us_ss = ss.W_us / ss.PT_us_s  # = 1 in SS
+    ss.M_us = ss.N_us * (par.beta_M_us / (1.0 - par.beta_M_us)) * (w_us_ss / (ss.PM_us / ss.PF_us_s))**par.eta_VA_us
     ss.M_us_us = par.alpha_M_us_us * (ss.PM_us_us / ss.PM_us)**(-par.eta_M_us) * ss.M_us
     ss.M_us_eu = (1.0 - par.alpha_M_us_us) * (ss.PM_us_eu / ss.PM_us)**(-par.eta_M_us) * ss.M_us
     rho_us = (par.eta_VA_us - 1.0) / par.eta_VA_us
     ss.Y_us = ss.Z_us * (((1.0 - par.beta_M_us)**(1.0/par.eta_VA_us) * ss.N_us**rho_us
                           + par.beta_M_us**(1.0/par.eta_VA_us) * ss.M_us**rho_us) ** (1.0 / rho_us))
-    ss.C_us = ss.Y_us - (ss.PM_us / ss.PF_us_s) * ss.M_us
-    par.varphi_us = (ss.W_us / ss.PF_us_s) * ss.C_us**(-par.sigma_us) / (ss.N_us**par.nu_us)
+
+    # ---- US NT sector (all prices = 1 in SS) ----
+    # T resource constraint: Y_us - C_T_us - M_us = 0 => C_T_us = Y_us - M_us
+    # C_us = C_T_us / alphaT_us (since all prices = 1 => C_T_us = alphaT_us * C_us)
+    ss.C_T_us = ss.Y_us - (ss.PM_us / ss.PF_us_s) * ss.M_us
+    ss.C_us   = ss.C_T_us / par.alphaT_us
+
+    C_NT_us_ss = (1.0 - par.alphaT_us) * ss.C_us
+    ss.NNT_us  = C_NT_us_ss / ss.ZNT_us
+
+    # varphi_us from labor supply: varphi*(N_us+NNT_us)^nu = w_us_ss * C_us^(-sigma)
+    par.varphi_us = w_us_ss * ss.C_us**(-par.sigma_us) / ((ss.N_us + ss.NNT_us)**par.nu_us)
 
     # ---- DK production: NT sector ----
     ss.ZNT = 1.0
@@ -309,16 +323,37 @@ def evaluate_ss(model, do_print=False):
     ss.CTH_eu_s = X_eu_tot
     ss.CTH_us_s = X_us_tot
 
-    # sector-level exports (same omega_TH weights for EU and US, all prices = 1)
-    ss.CTH_HH_eu_s = par.omega_TH_HH * ss.CTH_eu_s
-    ss.CTH_HL_eu_s = par.omega_TH_HL * ss.CTH_eu_s
-    ss.CTH_LH_eu_s = par.omega_TH_LH * ss.CTH_eu_s
-    ss.CTH_LL_eu_s = par.omega_TH_LL * ss.CTH_eu_s
+    # sector-level exports using calibrated share_X_us_H/L (destination-specific)
+    # old version used uniform omega_TH weights, making all sectors equally exposed to US:
+    # ss.CTH_HH_eu_s = par.omega_TH_HH * ss.CTH_eu_s
+    # ss.CTH_HL_eu_s = par.omega_TH_HL * ss.CTH_eu_s
+    # ss.CTH_LH_eu_s = par.omega_TH_LH * ss.CTH_eu_s
+    # ss.CTH_LL_eu_s = par.omega_TH_LL * ss.CTH_eu_s
+    # ss.CTH_HH_us_s = par.omega_TH_HH * ss.CTH_us_s
+    # ss.CTH_HL_us_s = par.omega_TH_HL * ss.CTH_us_s
+    # ss.CTH_LH_us_s = par.omega_TH_LH * ss.CTH_us_s
+    # ss.CTH_LL_us_s = par.omega_TH_LL * ss.CTH_us_s
 
-    ss.CTH_HH_us_s = par.omega_TH_HH * ss.CTH_us_s
-    ss.CTH_HL_us_s = par.omega_TH_HL * ss.CTH_us_s
-    ss.CTH_LH_us_s = par.omega_TH_LH * ss.CTH_us_s
-    ss.CTH_LL_us_s = par.omega_TH_LL * ss.CTH_us_s
+    ss.CTH_HH_us_s = par.share_X_us_H * X_HH
+    ss.CTH_HL_us_s = par.share_X_us_L * X_HL
+    ss.CTH_LH_us_s = par.share_X_us_H * X_LH
+    ss.CTH_LL_us_s = par.share_X_us_L * X_LL
+
+    ss.CTH_HH_eu_s = (1.0 - par.share_X_us_H) * X_HH
+    ss.CTH_HL_eu_s = (1.0 - par.share_X_us_L) * X_HL
+    ss.CTH_LH_eu_s = (1.0 - par.share_X_us_H) * X_LH
+    ss.CTH_LL_eu_s = (1.0 - par.share_X_us_L) * X_LL
+
+    # back out destination-specific CES weights for the dynamic model
+    par.omega_TH_HH_us = ss.CTH_HH_us_s / ss.CTH_us_s
+    par.omega_TH_HL_us = ss.CTH_HL_us_s / ss.CTH_us_s
+    par.omega_TH_LH_us = ss.CTH_LH_us_s / ss.CTH_us_s
+    par.omega_TH_LL_us = ss.CTH_LL_us_s / ss.CTH_us_s
+
+    par.omega_TH_HH_eu = ss.CTH_HH_eu_s / ss.CTH_eu_s
+    par.omega_TH_HL_eu = ss.CTH_HL_eu_s / ss.CTH_eu_s
+    par.omega_TH_LH_eu = ss.CTH_LH_eu_s / ss.CTH_eu_s
+    par.omega_TH_LL_eu = ss.CTH_LL_eu_s / ss.CTH_eu_s
 
     ss.M_eu_s = ss.CTH_eu_s
     ss.M_us_s = ss.CTH_us_s

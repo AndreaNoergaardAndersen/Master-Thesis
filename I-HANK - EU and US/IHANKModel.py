@@ -32,7 +32,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
                        'beta','G',
                        'i_shock',
                        'i_shock_eu', 'Z_eu', 'ZNT_eu',
-                       'i_shock_us', 'Z_us',
+                       'i_shock_us', 'Z_us', 'ZNT_us',
                        'tau_x',
                        'tau_m']
 
@@ -40,12 +40,12 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.unknowns = ['CB','NNT','NHH','NHL','NLH','NLL',
                          'piWHH','piWHL','piWLH','piWLL','piWNT', 'CB_us',
                          'C_eu', 'N_eu', 'NNT_eu', 'pi_T_eu', 'pi_NT_eu', 'i_eu', 'mc_eu',
-                         'C_us', 'N_us', 'pi_us', 'i_us', 'mc_us']
+                         'C_us', 'N_us', 'NNT_us', 'pi_T_us', 'pi_NT_us', 'i_us', 'mc_us']
 
         self.targets = ['NKWCHH_res','NKWCHL_res','NKWCLH_res','NKWCLL_res','NKWCNT_res',
                         'clearing_YHH','clearing_YHL','clearing_YLH','clearing_YLL','clearing_YNT',
                         'eu_Euler_res','eu_NKPC_res','eu_NKPC_NT_res','eu_TR_res','eu_LS_res','eu_RC_res','eu_NT_res','UIP_res',
-                        'us_Euler_res','us_NKPC_res','us_TR_res','us_LS_res','us_RC_res','UIP_res_us']
+                        'us_Euler_res','us_NKPC_res','us_NKPC_NT_res','us_TR_res','us_LS_res','us_RC_res','us_NT_res','UIP_res_us']
 
         # d. block sequence
         self.blocks = [
@@ -80,11 +80,11 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         # Employment shares
         # High-material sectors (HH+HL): total 38%, split evenly
-        par.sHH = 0.19  # high material, high US export share
-        par.sHL = 0.19  # high material, low US export share
+        par.sHH = 0.37 #0.19  # high material, high US export share
+        par.sHL = 0.01 #0.19  # high material, low US export share
         # Low-material sectors (LH+LL): total 19%, split evenly
-        par.sLH = 0.095 # low material, high US export share
-        par.sLL = 0.095 # low material, low US export share
+        par.sLH = 0.13 #0.095 # low material, high US export share
+        par.sLL = 0.06 #0.095 # low material, low US export share
         # sNT = 1 - sHH - sHL - sLH - sLL (derived)
 
         # b. preferences
@@ -106,6 +106,16 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.omega_TH_LH = np.nan
         par.omega_TH_LL = np.nan  # stored explicitly for symmetry
         par.eta_TH = 2.0
+
+        # Destination-specific sector CES weights (calibrated in SS from share_X_us_H/L)
+        par.omega_TH_HH_eu = np.nan
+        par.omega_TH_HL_eu = np.nan
+        par.omega_TH_LH_eu = np.nan
+        par.omega_TH_LL_eu = np.nan
+        par.omega_TH_HH_us = np.nan
+        par.omega_TH_HL_us = np.nan
+        par.omega_TH_LH_us = np.nan
+        par.omega_TH_LL_us = np.nan
 
         # Labor disutility (calibrated in SS)
         par.varphiHH = np.nan
@@ -182,11 +192,15 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         par.M_us_s_ss = np.nan
 
+        # US non-tradable sector (mirrors EU)
+        par.alphaT_us = 0.70   # tradable share in US consumption
+        par.etaT_us   = 1.50   # T vs NT substitution elasticity in US
+
         # f. government
         par.tau_ss = 0.30
         par.omega = 0.10
-        par.phi_B = 1/3
-
+        par.phi_B = 0.93
+        
         par.phi_NFA = 0.001
 
         # central bank
@@ -231,6 +245,10 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.jump_i_shock_us = 0.00
         par.rho_i_shock_us = 0.00
         par.std_i_shock_us = 0.00
+
+        par.jump_ZNT_us = 0.00
+        par.rho_ZNT_us = 0.00
+        par.std_ZNT_us = 0.00
 
         # i. misc.
         par.T = 200
