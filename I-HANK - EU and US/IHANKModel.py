@@ -103,10 +103,10 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.etaF_us = 2.0
 
         # Home-tradeable 4-sector CES weights (calibrated in SS, shared by all buyers)
-        par.omega_TH_HH = np.nan
-        par.omega_TH_HL = np.nan
-        par.omega_TH_LH = np.nan
-        par.omega_TH_LL = np.nan  # stored explicitly for symmetry
+        par.omega_TH_HH = 0.56
+        par.omega_TH_HL = 0.25
+        par.omega_TH_LH = 0.12
+        par.omega_TH_LL = 0.07  # stored explicitly for symmetry
         par.eta_TH = 2.0
 
         # Destination-specific sector CES weights (calibrated in SS from share_X_us_H/L)

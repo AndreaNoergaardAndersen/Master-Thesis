@@ -262,11 +262,11 @@ def evaluate_ss(model, do_print=False):
                         + par.beta_M_dk_l**(1.0/par.eta_VA_dk) * ss.M_dk_lx**rho_dk) ** (1.0 / rho_dk))
 
     # ---- Calibrate inner flat-CES weights from SS gross outputs ----
-    Y_T_tot = ss.YHH + ss.YHL + ss.YLH + ss.YLL
-    par.omega_TH_HH = ss.YHH / Y_T_tot
-    par.omega_TH_HL = ss.YHL / Y_T_tot
-    par.omega_TH_LH = ss.YLH / Y_T_tot
-    par.omega_TH_LL = ss.YLL / Y_T_tot   # = 1 - sum of above
+    # Y_T_tot = ss.YHH + ss.YHL + ss.YLH + ss.YLL
+    # par.omega_TH_HH = ss.YHH / Y_T_tot
+    #par.omega_TH_HL = ss.YHL / Y_T_tot
+    # par.omega_TH_LH = ss.YLH / Y_T_tot
+    # par.omega_TH_LL = ss.YLL / Y_T_tot   # = 1 - sum of above
 
     # ---- Household income ----
     ss.tau = par.tau_ss
