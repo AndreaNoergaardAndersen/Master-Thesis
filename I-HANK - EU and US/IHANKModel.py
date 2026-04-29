@@ -106,7 +106,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.omega_TH_HH = 0.56
         par.omega_TH_HL = 0.25
         par.omega_TH_LH = 0.12
-        par.omega_TH_LL = 0.07  # stored explicitly for symmetry
+        par.omega_TH_LL = 0.07  
         par.eta_TH = 2.0
 
         # Destination-specific sector CES weights (calibrated in SS from share_X_us_H/L)
@@ -125,15 +125,15 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphiLH = np.nan
         par.varphiLL = np.nan
         par.varphiNT = np.nan
-        par.nu = 1.0
+        par.nu = 2.0 # inverse Frisch elasticity set to match a Frisch elasticity of 0.5 (literature) (1.0 before) 
 
         # c. income parameters
         par.rho_z = 0.95
         par.sigma_psi = 0.10
 
         # d. price setting
-        par.kappa = 0.1
-        par.muw = 1.2
+        par.kappa = 0.05 # matches literature (0.1 before)
+        par.muw = 1.2 # 
 
         # Danish production — material parameters shared within H/L group
         par.beta_M_dk_h = 1/3       # material share, high-material sectors (HH, HL)
