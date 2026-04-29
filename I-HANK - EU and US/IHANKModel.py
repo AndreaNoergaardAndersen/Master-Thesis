@@ -201,7 +201,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # f. government
         par.tau_ss = 0.30
         par.omega = 0.10
-        par.phi_B = 0.93
+        par.phi_B = 0.75
         
         par.phi_NFA = 0.001
 
@@ -253,7 +253,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.std_ZNT_us = 0.00
 
         # i. misc.
-        par.T = 200
+        par.T = 300
 
         par.max_iter_solve = 50_000
         par.max_iter_simulate = 50_000
