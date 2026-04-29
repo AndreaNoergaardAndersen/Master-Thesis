@@ -28,7 +28,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.intertemps_hh = ['vbeg_a']
 
         # c. GE
-        self.shocks = ['ZTH','ZNT',
+        self.shocks = ['ZTH_HH', 'ZTH_HL', 'ZTH_LH', 'ZTH_LL', 'ZNT',
                        'beta','G',
                        'i_shock',
                        'i_shock_eu', 'Z_eu', 'ZNT_eu',
@@ -200,10 +200,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         # f. government
         par.tau_ss = 0.30
-        par.omega = 0.10
-        par.phi_B = 0.75
-        
-        par.phi_NFA = 0.001
+        par.phi_B = 0.93
 
         # central bank
         par.float = False
@@ -212,7 +209,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # g. grids
         par.a_min = 0.0
         par.a_max = 50.0
-        par.Na = 500
+        par.Na = 300
 
         # h. shocks
         par.jump_tau_m = 0.0

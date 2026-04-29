@@ -237,7 +237,8 @@ def us_nk(par, ini, ss,
 
 @nb.njit
 def production(par, ini, ss,
-               ZTH, ZNT, NHH, NHL, NLH, NLL, NNT,
+               ZTH_HH, ZTH_HL, ZTH_LH, ZTH_LL, ZNT, 
+               NHH, NHL, NLH, NLL, NNT,
                piWHH, piWHL, piWLH, piWLL, piWNT,
                YHH, YHL, YLH, YLL, YNT,
                WHH, WHL, WLH, WLL, WNT,
@@ -273,52 +274,52 @@ def production(par, ini, ss,
     # ---- HH sector (high material, high US export) ----
     price_from_inflation(WHH, piWHH, par.T, ss.WHH)
     inside_cost_h = (1.0 - par.beta_M_dk_h) * WHH**pow_ + par.beta_M_dk_h * PM_dk_h**pow_
-    PHH[:] = (inside_cost_h ** (1.0 / pow_)) / ZTH
+    PHH[:] = (inside_cost_h ** (1.0 / pow_)) / ZTH_HH
     ratio_MN_h = (par.beta_M_dk_h / (1.0 - par.beta_M_dk_h)) * (WHH / PM_dk_h) ** par.eta_VA_dk
     M_dk_h[:] = NHH * ratio_MN_h
     M_dk_us_h[:] = par.alpha_M_dk_us_h  * (PM_dk_us / PM_dk_h) ** (-par.eta_M_dk) * M_dk_h
     M_dk_eu_h[:] = (1.0 - par.alpha_M_dk_us_h) * (PM_dk_eu / PM_dk_h) ** (-par.eta_M_dk) * M_dk_h
     inside_Y_h = ((1.0 - par.beta_M_dk_h)**(1.0/par.eta_VA_dk) * NHH**rho
                   + par.beta_M_dk_h**(1.0/par.eta_VA_dk) * M_dk_h**rho)
-    YHH[:] = ZTH * (inside_Y_h ** (1.0 / rho))
+    YHH[:] = ZTH_HH * (inside_Y_h ** (1.0 / rho))
 
     # ---- HL sector (high material, low US export) ----
     # Same production technology as HH (same h-params), different export structure
     price_from_inflation(WHL, piWHL, par.T, ss.WHL)
     inside_cost_hx = (1.0 - par.beta_M_dk_h) * WHL**pow_ + par.beta_M_dk_h * PM_dk_h**pow_
-    PHL[:] = (inside_cost_hx ** (1.0 / pow_)) / ZTH
+    PHL[:] = (inside_cost_hx ** (1.0 / pow_)) / ZTH_HL
     ratio_MN_hx = (par.beta_M_dk_h / (1.0 - par.beta_M_dk_h)) * (WHL / PM_dk_h) ** par.eta_VA_dk
     M_dk_hx[:] = NHL * ratio_MN_hx
     M_dk_us_hx[:] = par.alpha_M_dk_us_h  * (PM_dk_us / PM_dk_h) ** (-par.eta_M_dk) * M_dk_hx
     M_dk_eu_hx[:] = (1.0 - par.alpha_M_dk_us_h) * (PM_dk_eu / PM_dk_h) ** (-par.eta_M_dk) * M_dk_hx
     inside_Y_hx = ((1.0 - par.beta_M_dk_h)**(1.0/par.eta_VA_dk) * NHL**rho
                    + par.beta_M_dk_h**(1.0/par.eta_VA_dk) * M_dk_hx**rho)
-    YHL[:] = ZTH * (inside_Y_hx ** (1.0 / rho))
+    YHL[:] = ZTH_HL * (inside_Y_hx ** (1.0 / rho))
 
     # ---- LH sector (low material, high US export) ----
     price_from_inflation(WLH, piWLH, par.T, ss.WLH)
     inside_cost_l = (1.0 - par.beta_M_dk_l) * WLH**pow_ + par.beta_M_dk_l * PM_dk_l**pow_
-    PLH[:] = (inside_cost_l ** (1.0 / pow_)) / ZTH
+    PLH[:] = (inside_cost_l ** (1.0 / pow_)) / ZTH_LH
     ratio_MN_l = (par.beta_M_dk_l / (1.0 - par.beta_M_dk_l)) * (WLH / PM_dk_l) ** par.eta_VA_dk
     M_dk_l[:] = NLH * ratio_MN_l
     M_dk_us_l[:] = par.alpha_M_dk_us_l  * (PM_dk_us / PM_dk_l) ** (-par.eta_M_dk) * M_dk_l
     M_dk_eu_l[:] = (1.0 - par.alpha_M_dk_us_l) * (PM_dk_eu / PM_dk_l) ** (-par.eta_M_dk) * M_dk_l
     inside_Y_l = ((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * NLH**rho
                   + par.beta_M_dk_l**(1.0/par.eta_VA_dk) * M_dk_l**rho)
-    YLH[:] = ZTH * (inside_Y_l ** (1.0 / rho))
+    YLH[:] = ZTH_LH * (inside_Y_l ** (1.0 / rho))
 
     # ---- LL sector (low material, low US export) ----
     # Same production technology as LH (same l-params), different export structure
     price_from_inflation(WLL, piWLL, par.T, ss.WLL)
     inside_cost_lx = (1.0 - par.beta_M_dk_l) * WLL**pow_ + par.beta_M_dk_l * PM_dk_l**pow_
-    PLL[:] = (inside_cost_lx ** (1.0 / pow_)) / ZTH
+    PLL[:] = (inside_cost_lx ** (1.0 / pow_)) / ZTH_LL
     ratio_MN_lx = (par.beta_M_dk_l / (1.0 - par.beta_M_dk_l)) * (WLL / PM_dk_l) ** par.eta_VA_dk
     M_dk_lx[:] = NLL * ratio_MN_lx
     M_dk_us_lx[:] = par.alpha_M_dk_us_l  * (PM_dk_us / PM_dk_l) ** (-par.eta_M_dk) * M_dk_lx
     M_dk_eu_lx[:] = (1.0 - par.alpha_M_dk_us_l) * (PM_dk_eu / PM_dk_l) ** (-par.eta_M_dk) * M_dk_lx
     inside_Y_lx = ((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * NLL**rho
                    + par.beta_M_dk_l**(1.0/par.eta_VA_dk) * M_dk_lx**rho)
-    YLL[:] = ZTH * (inside_Y_lx ** (1.0 / rho))
+    YLL[:] = ZTH_LL * (inside_Y_lx ** (1.0 / rho))
 
 @nb.njit
 def prices(par, ini, ss,

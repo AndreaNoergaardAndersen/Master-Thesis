@@ -198,7 +198,7 @@ def evaluate_ss(model, do_print=False):
     par.varphi_us = w_us_ss * ss.C_us**(-par.sigma_us) / ((ss.N_us + ss.NNT_us)**par.nu_us)
 
     # ---- DK production: NT sector ----
-    ss.ZNT = 1.0
+    ss.ZNT = 0.88
     ss.NNT = sNT
     ss.YNT = ss.ZNT * ss.NNT
     ss.WNT = ss.PNT * ss.ZNT     # = 1 in SS
@@ -209,53 +209,56 @@ def evaluate_ss(model, do_print=False):
     rho_dk = (par.eta_VA_dk - 1.0) / par.eta_VA_dk
 
     # ---- DK production: HH sector (high material, high US export share) ----
-    ss.ZTH = 1.0
+    ss.ZTH_HH = 0.87
     ss.NHH = par.sHH
     ss.PM_dk_h = blocks.price_index(ss.PM_dk_us, ss.PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us_h)
-    # nominal wage from unit-cost inversion (PHH = ZTH = PM_dk_h = 1 → WHH = 1)
-    rhs_h = ((ss.PHH * ss.ZTH)**pow_dk - par.beta_M_dk_h * ss.PM_dk_h**pow_dk) / (1.0 - par.beta_M_dk_h)
+    # nominal wage from unit-cost inversion (PHH = ZTH_HH = PM_dk_h = 1 → WHH = 1)
+    rhs_h = ((ss.PHH * ss.ZTH_HH)**pow_dk - par.beta_M_dk_h * ss.PM_dk_h**pow_dk) / (1.0 - par.beta_M_dk_h)
     ss.WHH = rhs_h ** (1.0 / pow_dk)
     ss.wHH = ss.WHH / ss.P
     ss.M_dk_h = ss.NHH * (par.beta_M_dk_h / (1.0 - par.beta_M_dk_h)) * (ss.WHH / ss.PM_dk_h)**par.eta_VA_dk
     ss.M_dk_us_h = par.alpha_M_dk_us_h * (ss.PM_dk_us / ss.PM_dk_h)**(-par.eta_M_dk) * ss.M_dk_h
     ss.M_dk_eu_h = (1.0 - par.alpha_M_dk_us_h) * (ss.PM_dk_eu / ss.PM_dk_h)**(-par.eta_M_dk) * ss.M_dk_h
-    ss.YHH = ss.ZTH * (((1.0 - par.beta_M_dk_h)**(1.0/par.eta_VA_dk) * ss.NHH**rho_dk
+    ss.YHH = ss.ZTH_HH * (((1.0 - par.beta_M_dk_h)**(1.0/par.eta_VA_dk) * ss.NHH**rho_dk
                         + par.beta_M_dk_h**(1.0/par.eta_VA_dk) * ss.M_dk_h**rho_dk) ** (1.0 / rho_dk))
 
     # ---- DK production: HL sector (high material, low US export share) ----
     # Same production technology as HH (same h-params), different export intensity
+    ss.ZTH_HL = 1.50
     ss.NHL = par.sHL
-    rhs_hx = ((ss.PHL * ss.ZTH)**pow_dk - par.beta_M_dk_h * ss.PM_dk_h**pow_dk) / (1.0 - par.beta_M_dk_h)
+    rhs_hx = ((ss.PHL * ss.ZTH_HL)**pow_dk - par.beta_M_dk_h * ss.PM_dk_h**pow_dk) / (1.0 - par.beta_M_dk_h)
     ss.WHL = rhs_hx ** (1.0 / pow_dk)
     ss.wHL = ss.WHL / ss.P
     ss.M_dk_hx = ss.NHL * (par.beta_M_dk_h / (1.0 - par.beta_M_dk_h)) * (ss.WHL / ss.PM_dk_h)**par.eta_VA_dk
     ss.M_dk_us_hx = par.alpha_M_dk_us_h * (ss.PM_dk_us / ss.PM_dk_h)**(-par.eta_M_dk) * ss.M_dk_hx
     ss.M_dk_eu_hx = (1.0 - par.alpha_M_dk_us_h) * (ss.PM_dk_eu / ss.PM_dk_h)**(-par.eta_M_dk) * ss.M_dk_hx
-    ss.YHL = ss.ZTH * (((1.0 - par.beta_M_dk_h)**(1.0/par.eta_VA_dk) * ss.NHL**rho_dk
+    ss.YHL = ss.ZTH_HL * (((1.0 - par.beta_M_dk_h)**(1.0/par.eta_VA_dk) * ss.NHL**rho_dk
                         + par.beta_M_dk_h**(1.0/par.eta_VA_dk) * ss.M_dk_hx**rho_dk) ** (1.0 / rho_dk))
 
     # ---- DK production: LH sector (low material, high US export share) ----
+    ss.ZTH_LH = 1.41
     ss.NLH = par.sLH
     ss.PM_dk_l = blocks.price_index(ss.PM_dk_us, ss.PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us_l)
-    rhs_l = ((ss.PLH * ss.ZTH)**pow_dk - par.beta_M_dk_l * ss.PM_dk_l**pow_dk) / (1.0 - par.beta_M_dk_l)
+    rhs_l = ((ss.PLH * ss.ZTH_LH)**pow_dk - par.beta_M_dk_l * ss.PM_dk_l**pow_dk) / (1.0 - par.beta_M_dk_l)
     ss.WLH = rhs_l ** (1.0 / pow_dk)
     ss.wLH = ss.WLH / ss.P
     ss.M_dk_l = ss.NLH * (par.beta_M_dk_l / (1.0 - par.beta_M_dk_l)) * (ss.WLH / ss.PM_dk_l)**par.eta_VA_dk
     ss.M_dk_us_l = par.alpha_M_dk_us_l * (ss.PM_dk_us / ss.PM_dk_l)**(-par.eta_M_dk) * ss.M_dk_l
     ss.M_dk_eu_l = (1.0 - par.alpha_M_dk_us_l) * (ss.PM_dk_eu / ss.PM_dk_l)**(-par.eta_M_dk) * ss.M_dk_l
-    ss.YLH = ss.ZTH * (((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * ss.NLH**rho_dk
+    ss.YLH = ss.ZTH_LH * (((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * ss.NLH**rho_dk
                         + par.beta_M_dk_l**(1.0/par.eta_VA_dk) * ss.M_dk_l**rho_dk) ** (1.0 / rho_dk))
 
     # ---- DK production: LL sector (low material, low US export share) ----
     # Same production technology as LH (same l-params), different export intensity
+    ss.ZTH_LL = 1.12
     ss.NLL = par.sLL
-    rhs_lx = ((ss.PLL * ss.ZTH)**pow_dk - par.beta_M_dk_l * ss.PM_dk_l**pow_dk) / (1.0 - par.beta_M_dk_l)
+    rhs_lx = ((ss.PLL * ss.ZTH_LL)**pow_dk - par.beta_M_dk_l * ss.PM_dk_l**pow_dk) / (1.0 - par.beta_M_dk_l)
     ss.WLL = rhs_lx ** (1.0 / pow_dk)
     ss.wLL = ss.WLL / ss.P
     ss.M_dk_lx = ss.NLL * (par.beta_M_dk_l / (1.0 - par.beta_M_dk_l)) * (ss.WLL / ss.PM_dk_l)**par.eta_VA_dk
     ss.M_dk_us_lx = par.alpha_M_dk_us_l * (ss.PM_dk_us / ss.PM_dk_l)**(-par.eta_M_dk) * ss.M_dk_lx
     ss.M_dk_eu_lx = (1.0 - par.alpha_M_dk_us_l) * (ss.PM_dk_eu / ss.PM_dk_l)**(-par.eta_M_dk) * ss.M_dk_lx
-    ss.YLL = ss.ZTH * (((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * ss.NLL**rho_dk
+    ss.YLL = ss.ZTH_LL * (((1.0 - par.beta_M_dk_l)**(1.0/par.eta_VA_dk) * ss.NLL**rho_dk
                         + par.beta_M_dk_l**(1.0/par.eta_VA_dk) * ss.M_dk_lx**rho_dk) ** (1.0 / rho_dk))
 
     # ---- Calibrate inner flat-CES weights from SS gross outputs ----
