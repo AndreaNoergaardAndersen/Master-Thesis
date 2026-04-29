@@ -1,0 +1,583 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage[authoryear,round]{natbib}
+
+\geometry{top=1.2in, bottom=1.2in, left=1.3in, right=1.3in}
+\onehalfspacing
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!60!black,
+    citecolor=blue!60!black,
+    urlcolor=blue!60!black
+}
+
+% Convenience macros
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\dD}{\,dD_t}
+
+\title{\textbf{A Three-Country HANK Model with Heterogeneous Sectors and Trade Policy}\\[0.4em]
+\large Model Documentation}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Model Overview}
+% ============================================================
+
+This document describes a small open economy Heterogeneous Agent New Keynesian (HANK) model in which Denmark is embedded in a three-country world comprising Denmark (DK), the European Union (EU), and the United States (US). The model is designed to study the macroeconomic and distributional effects of trade policy shocks, specifically an import tariff $\tau^m_t$ on US goods and an export tariff $\tau^x_t$ on Danish tradeable goods sold in the US market.
+
+The Danish economy features a unit measure of infinitely-lived households who are heterogeneous in both their idiosyncratic productivity and their sector of employment. Labour markets are organised by sector-specific unions that set nominal wages subject to quadratic adjustment costs, giving rise to a New Keynesian Wage Phillips Curve (NKWPC) for each sector. There are five Danish production sectors: four tradeable sectors differentiated by their material-input intensity (high or low) and their exposure to US export demand (high or low), and one non-tradeable sector.
+
+The two foreign blocs are each modelled as two-sector (tradeable and non-tradeable) representative-agent New Keynesian economies with sticky wages and Taylor rules. Material inputs in all three countries are sourced internationally through Armington aggregators. Denmark maintains a fixed exchange rate against the euro in the baseline; a floating regime with a Taylor rule is also available.
+
+% ============================================================
+\section{Households}
+\label{sec:hh}
+% ============================================================
+
+\subsection{Sector Assignment and State Space}
+
+The Danish household sector consists of a unit measure of infinitely-lived agents. Each household $i$ is born into one of five production sectors $s_i \in \{\text{HH}, \text{HL}, \text{LH}, \text{LL}, \text{NT}\}$, a fixed characteristic that determines which sector the household supplies labour to. The four tradeable sectors are distinguished by technology class and export orientation:
+\begin{itemize}
+    \item HH: high material-input intensity, high US export share;
+    \item HL: high material-input intensity, low US export share;
+    \item LH: low material-input intensity, high US export share;
+    \item LL: low material-input intensity, low US export share.
+\end{itemize}
+The fifth sector, NT, produces non-tradeable goods. The mass of households in sector $s$ equals the employment share $s_s$, with $\sum_s s_s = 1$.
+
+In addition to the fixed sector type, each household draws an idiosyncratic productivity shock $z_{it}$ that evolves exogenously. The household's state vector is $(s_i,\, z_{it},\, a_{i,t-1})$, where $a_{i,t-1} \geq 0$ denotes real savings carried into the current period.
+
+\subsection{Preferences and the Recursive Problem}
+
+Household preferences over consumption $c_{it}$ and labour $n_{s_i,t}$ are given by a standard CRRA specification. The recursive household problem is
+\begin{align}
+    v_t(s_i, z_{it}, a_{i,t-1}) = \max_{c_{it}} \left\{
+        \frac{c_{it}^{1-\sigma}}{1-\sigma}
+        - \frac{\varphi_{s_i}}{1+\nu}\left(\frac{N_{s_i,t}}{s_{s_i}}\right)^{1+\nu}
+    \right\}
+    + \beta_t\,\E_t\!\left[v_{t+1}(s_i, z_{i,t+1}, a_{it})\right],
+    \label{eq:vf}
+\end{align}
+subject to the flow budget constraint
+\begin{align}
+    a_{it} + c_{it} &= (1 + r^a_t)\,a_{i,t-1}
+        + (1-\tau_t)\,w_{s_i,t}\,\frac{N_{s_i,t}}{s_{s_i}}\,z_{it},
+    \label{eq:budget}
+\end{align}
+and the borrowing constraint $a_{it} \geq 0$.
+
+The parameters $\sigma > 0$ and $\nu > 0$ are the inverse elasticity of intertemporal substitution and the inverse Frisch elasticity, respectively. $\varphi_s > 0$ is a sector-specific labour-disutility weight calibrated to match the steady-state wage Phillips curve (Section~\ref{sec:unions}). $\beta_t$ is the (potentially time-varying) discount factor with steady-state value $\beta$. $r^a_t$ is the ex-post real return on savings, $\tau_t$ is the flat labour income tax rate, and $w_{s,t} = W_{s,t}/P_t$ denotes the real wage in sector $s$.
+
+Labour supply for each worker is $n_{s_i,t} = N_{s_i,t}/s_{s_i}$, where $N_{s,t}$ is aggregate employment in sector $s$: all workers in the same sector supply identical hours, with the level determined by the union (Section~\ref{sec:unions}). Labour supply is therefore taken as given by each individual household when solving~\eqref{eq:vf}.
+
+\subsection{Idiosyncratic Productivity}
+
+The idiosyncratic productivity $z_{it}$ follows a first-order autoregressive process in logarithms:
+\begin{align}
+    \log z_{i,t+1} &= \rho_z\,\log z_{it} + \psi_{i,t+1}, \qquad
+    \psi_{it} \sim \mathcal{N}(0,\sigma_\psi^2),
+    \label{eq:productivity}
+\end{align}
+with $\rho_z \in (0,1)$ and $\sigma_\psi > 0$. The process is approximated by a discrete Markov chain using the Rouwenhorst \citeyearpar{rouwenhorst_1995} method with $N_z = 5$ grid points.
+
+\subsection{Household Solution}
+
+The model is solved using the Endogenous Grid Method \citep[EGM,][]{carroll_2006}. The first-order condition for consumption gives
+\begin{align}
+    c_{it}^{-\sigma} &= \beta_t\,(1 + r^a_t)\,\E_t\!\left[c_{i,t+1}^{-\sigma}\right],
+\end{align}
+and the EGM recovers the optimal policy function on the asset grid by iterating backward on the intertemporal optimality condition.
+
+\subsection{Aggregation}
+
+Let $D_t(s,z,a)$ denote the joint distribution of households over sector, productivity, and assets at the start of period $t$. Aggregate household savings and consumption are
+\begin{align}
+    A^{hh}_t &= \int a_{it}\dD, \qquad
+    C^{hh}_t = \int c_{it}\dD.
+    \label{eq:aggregates_hh}
+\end{align}
+The NKWPC (Section~\ref{sec:unions}) requires the sector-specific, productivity-weighted average marginal utility of consumption:
+\begin{align}
+    \hat{u}_{s,t} &= \frac{1}{s_s}
+        \int_{\{s_i = s\}} c_{it}^{-\sigma}\,z_{it}\dD.
+    \label{eq:MUC_s}
+\end{align}
+
+
+% ============================================================
+\section{Consumption Demand}
+\label{sec:demand}
+% ============================================================
+
+Danish households allocate total expenditure $C^{hh}_t$ across goods through a nested CES structure. Since all households face the same prices, the expenditure-share equations below apply to the aggregate, and the micro-level allocation is identical across households up to the overall scale $C^{hh}_t$.
+
+\subsection{Tradeable versus Non-Tradeable Goods}
+
+At the top level, households choose between a tradeable composite $C_{T,t}$ and a non-tradeable good $C_{NT,t}$:
+\begin{align}
+    C_{T,t} &= \alpha_T \left(\frac{P_{T,t}}{P_t}\right)^{-\eta_T} C^{hh}_t,
+    \label{eq:CT}\\
+    C_{NT,t} &= (1-\alpha_T) \left(\frac{P_{NT,t}}{P_t}\right)^{-\eta_T} C^{hh}_t,
+    \label{eq:CNT}
+\end{align}
+where $\alpha_T$ is the tradeable expenditure share, $\eta_T$ is the substitution elasticity, and $P_t$ is the consumer price index (CPI):
+\begin{align}
+    P_t &= \left[
+        \alpha_T\,P_{T,t}^{1-\eta_T} + (1-\alpha_T)\,P_{NT,t}^{1-\eta_T}
+    \right]^{\!\frac{1}{1-\eta_T}}.
+    \label{eq:CPI}
+\end{align}
+The parameter $\alpha_T$ is not calibrated externally but is instead determined by the non-tradeable market-clearing condition in steady state, as described in Section~\ref{sec:mktclearing}.
+
+\subsection{Home versus Foreign Tradeable Goods}
+
+Within the tradeable bundle, households choose between domestically produced tradeable goods $C_{TH,t}$ and an imported tradeable composite $C_{TF,t}$:
+\begin{align}
+    C_{TH,t} &= (1-\alpha_F)\left(\frac{P_{TH,t}}{P_{T,t}}\right)^{-\eta_F} C_{T,t},
+    \label{eq:CTH}\\
+    C_{TF,t} &= \alpha_F\left(\frac{P_{F,TF,t}}{P_{T,t}}\right)^{-\eta_F} C_{T,t},
+    \label{eq:CTF}
+\end{align}
+with tradeable price index
+\begin{align}
+    P_{T,t} &= \left[
+        \alpha_F\,P_{F,TF,t}^{1-\eta_F} + (1-\alpha_F)\,P_{TH,t}^{1-\eta_F}
+    \right]^{\!\frac{1}{1-\eta_F}}.
+    \label{eq:PT}
+\end{align}
+
+\subsection{Four Domestic Tradeable Sectors}
+
+The home tradeable composite aggregates over the four Danish tradeable sectors via a CES demand system with sector-level expenditure weights $\omega_{TH,s}$:
+\begin{align}
+    C_{TH,s,t} &= \omega_{TH,s}\left(\frac{P_{s,t}}{P_{TH,t}}\right)^{-\eta_{TH}} C_{TH,t},
+    \qquad s \in \{\text{HH},\text{HL},\text{LH},\text{LL}\},
+    \label{eq:CTH_s}
+\end{align}
+with home tradeable price index
+\begin{align}
+    P_{TH,t} &= \left[
+        \sum_{s} \omega_{TH,s}\,P_{s,t}^{1-\eta_{TH}}
+    \right]^{\!\frac{1}{1-\eta_{TH}}}.
+    \label{eq:PTH}
+\end{align}
+
+\subsection{EU versus US Imports}
+
+The foreign tradeable bundle $C_{TF,t}$ is split between EU and US goods:
+\begin{align}
+    C_{TF,eu,t} &= (1-\alpha_{us})\left(\frac{P_{F,eu,t}}{P_{F,TF,t}}\right)^{-\eta_{F,us}} C_{TF,t},
+    \label{eq:CTF_eu}\\
+    C_{TF,us,t} &= \alpha_{us}\left(\frac{P_{F,us,t}}{P_{F,TF,t}}\right)^{-\eta_{F,us}} C_{TF,t},
+    \label{eq:CTF_us}
+\end{align}
+with foreign bundle price index
+\begin{align}
+    P_{F,TF,t} &= \left[
+        \alpha_{us}\,P_{F,us,t}^{1-\eta_{F,us}} + (1-\alpha_{us})\,P_{F,eu,t}^{1-\eta_{F,us}}
+    \right]^{\!\frac{1}{1-\eta_{F,us}}}.
+    \label{eq:PFTF}
+\end{align}
+
+\subsection{Foreign Prices in Danish Kroner}
+
+The domestic-currency prices of EU and US tradeable goods are
+\begin{align}
+    P_{F,eu,t} &= P^*_{T,eu,t}\cdot\mathcal{E}_t,
+    \label{eq:PF_eu}\\
+    P_{F,us,t} &= (1+\tau^m_t)\,P^*_{T,us,t}\cdot\mathcal{E}^{US}_t,
+    \label{eq:PF_us}
+\end{align}
+where $\mathcal{E}_t$ (DKK/EUR) and $\mathcal{E}^{US}_t$ (DKK/USD) are the nominal exchange rates, $P^*_{T,eu,t}$ and $P^*_{T,us,t}$ are the tradeable price levels in EUR and USD respectively, and $\tau^m_t \geq 0$ is the import tariff rate applied to US goods.
+
+\subsection{Export Demand}
+
+Foreign demand for Danish tradeable goods follows an Armington structure. Aggregate EU and US export demand for the Danish home bundle are
+\begin{align}
+    C^*_{TH,eu,t} &= \left(\frac{P^*_{TH,eu,t}}{P^{CPI}_{eu,t}}\right)^{-\eta_s} M^{eu,*}_t,
+    \label{eq:exp_eu}\\
+    C^*_{TH,us,t} &= \left(\frac{P^*_{TH,us,t}}{P^{CPI}_{us,t}}\right)^{-\eta_s} M^{us,*}_t,
+    \label{eq:exp_us}
+\end{align}
+where $P^*_{TH,eu,t} = P_{TH,t}/\mathcal{E}_t$ is the Danish home tradeable price in EUR, and $P^*_{TH,us,t} = (1+\tau^x_t)\,P_{TH,t}/\mathcal{E}^{US}_t$ is the corresponding price in USD, inclusive of the US export tariff $\tau^x_t$. The demand scale factors $M^{eu,*}_t$ and $M^{us,*}_t$ scale proportionally to foreign tradeable consumption (Section~\ref{sec:foreign}). The elasticity $\eta_s$ governs the price sensitivity of foreign demand.
+
+Within each export market, demand is allocated across Danish sectors using destination-specific CES weights. Demand for sector-$s$ goods from EU and US buyers is
+\begin{align}
+    C^*_{TH,s,eu,t} &= \omega^{eu}_{TH,s}\left(\frac{P_{s,t}}{P_{TH,t}}\right)^{-\eta_{TH}} C^*_{TH,eu,t},
+    \label{eq:exp_s_eu}\\
+    C^*_{TH,s,us,t} &= \omega^{us}_{TH,s}\left(\frac{P_{s,t}}{P_{TH,t}}\right)^{-\eta_{TH}} C^*_{TH,us,t},
+    \label{eq:exp_s_us}
+\end{align}
+where $\omega^{eu}_{TH,s}$ and $\omega^{us}_{TH,s}$ are destination-specific sector weights, calibrated from the steady-state export composition. Because HH- and LH-type sectors have high US export orientation while HL- and LL-type sectors do not, the tariff shock $\tau^x_t$ generates heterogeneous cross-sector effects through these weights.
+
+
+% ============================================================
+\section{Production}
+\label{sec:production}
+% ============================================================
+
+\subsection{Non-Tradeable Sector}
+
+The non-tradeable sector operates a linear-in-labour production technology:
+\begin{align}
+    Y_{NT,t} &= Z_{NT,t}\,N_{NT,t},
+    \label{eq:YNT}
+\end{align}
+where $Z_{NT,t}$ is total factor productivity. Competitive pricing implies $P_{NT,t} = W_{NT,t}/Z_{NT,t}$, so the real non-tradeable price equals $P_{NT,t}/P_t = w_{NT,t}/Z_{NT,t}$ where $w_{NT,t}$ is the real wage in the NT sector.
+
+\subsection{Danish Tradeable Sectors}
+
+Each tradeable sector $s \in \{\text{HH},\text{HL},\text{LH},\text{LL}\}$ employs labour $N_{s,t}$ and a composite material input $M_{s,t}$ under a constant-elasticity-of-substitution technology:
+\begin{align}
+    Y_{s,t} &= Z_{s,t}\left[
+        (1-\beta_{M,s})^{\frac{1}{\eta_{VA}}}\,N_{s,t}^\rho
+        + \beta_{M,s}^{\frac{1}{\eta_{VA}}}\,M_{s,t}^\rho
+    \right]^{\!\frac{1}{\rho}},
+    \qquad \rho = \frac{\eta_{VA}-1}{\eta_{VA}},
+    \label{eq:Ys}
+\end{align}
+where $Z_{s,t}$ is sector TFP, $\beta_{M,s} \in (0,1)$ is the material-input cost share, and $\eta_{VA} > 0$ is the elasticity of substitution between labour and materials in production.
+
+Firms operate competitively and minimise costs given the nominal wage $W_{s,t}$ and the composite material price $P_{M,s,t}$. The cost-minimising price satisfies
+\begin{align}
+    P_{s,t} &= \frac{\left[
+        (1-\beta_{M,s})\,W_{s,t}^{1-\eta_{VA}}
+        + \beta_{M,s}\,P_{M,s,t}^{1-\eta_{VA}}
+    \right]^{\!\frac{1}{1-\eta_{VA}}}}{Z_{s,t}},
+    \label{eq:Ps}
+\end{align}
+which equals the output price under competitive pricing. The optimal material-to-labour ratio is
+\begin{align}
+    M_{s,t} &= N_{s,t}\,\frac{\beta_{M,s}}{1-\beta_{M,s}}
+        \left(\frac{W_{s,t}}{P_{M,s,t}}\right)^{\!\eta_{VA}}.
+    \label{eq:material_demand}
+\end{align}
+
+The four tradeable sectors are grouped into two technology classes. The high-material sectors HH and HL share material parameters $(\beta^h_M,\, \alpha^{h,US}_M)$, while the low-material sectors LH and LL share $(\beta^l_M,\, \alpha^{l,US}_M)$. Sectors within the same technology class differ only in their export orientation.
+
+\subsection{Material Inputs and Sourcing}
+
+Material inputs are an Armington composite of EU and US intermediate goods. The composite material price for sector $s$ is
+\begin{align}
+    P_{M,s,t} &= \left[
+        \alpha^{US}_{M,s}\,P_{M,us,t}^{1-\eta_M}
+        + (1-\alpha^{US}_{M,s})\,P_{M,eu,t}^{1-\eta_M}
+    \right]^{\!\frac{1}{1-\eta_M}},
+    \label{eq:PM_s}
+\end{align}
+where $\alpha^{US}_{M,s}$ is the sector-specific US share in material imports and $\eta_M$ is the material-sourcing elasticity. The domestic-currency prices of EU and US materials are
+\begin{align}
+    P_{M,eu,t} &= P^*_{T,eu,t}\cdot\mathcal{E}_t,
+    \label{eq:PM_eu}\\
+    P_{M,us,t} &= (1+\tau^m_t)\,P^*_{T,us,t}\cdot\mathcal{E}^{US}_t.
+    \label{eq:PM_us}
+\end{align}
+These are the same as the consumer import prices in equations~\eqref{eq:PF_eu}--\eqref{eq:PF_us}: both households and firms face the same tariff-inclusive US prices.
+
+
+% ============================================================
+\section{Unions and Wage Setting}
+\label{sec:unions}
+% ============================================================
+
+Each sector $s$ has a representative union that sets the nominal wage $W_{s,t}$ on behalf of all workers in the sector. Wage adjustment is costly, and the resulting wage dynamics follow a New Keynesian Wage Phillips Curve \citep[e.g.,][]{erceg_henderson_levin_2000}. The sector-specific NKWPC is
+\begin{align}
+    \pi^w_{s,t} &= \beta_t\,\pi^w_{s,t+1}
+        + \kappa\left[
+            \varphi_s\!\left(\frac{N_{s,t}}{s_s}\right)^{\!\nu}
+            - \frac{1-\tau_t}{\mu_w}\,w_{s,t}\,\hat{u}_{s,t}
+        \right],
+    \label{eq:NKWPC}
+\end{align}
+where $\pi^w_{s,t} = W_{s,t}/W_{s,t-1} - 1$ is the sectoral nominal wage inflation rate, $\kappa > 0$ is the slope of the wage Phillips curve, $\mu_w > 1$ is the desired wage markup over the competitive level, and $\hat{u}_{s,t}$ is defined in equation~\eqref{eq:MUC_s}.
+
+The term in square brackets represents the wedge between the marginal rate of substitution between consumption and leisure and the marginal utility value of the real after-tax wage. The disutility term $\varphi_s(N_{s,t}/s_s)^\nu$ is the marginal disutility of labour per worker in sector $s$ (recall $N_{s,t}/s_s$ is per-capita hours). The utility gain from labour income is $(1-\tau_t)w_{s,t}\hat{u}_{s,t}/\mu_w$, which includes the productivity-weighted average marginal utility $\hat{u}_{s,t}$ to account for within-sector heterogeneity in the response to wages.
+
+The sector-level labour disutility parameters $\varphi_s$ are calibrated in steady state so that the NKWPC residual is exactly zero:
+\begin{align}
+    \varphi_s &= \frac{(1-\tau_{ss})\,w_{s,ss}\,\hat{u}_{s,ss}}{\mu_w\,(N_{s,ss}/s_s)^\nu}.
+    \label{eq:varphi_s_calib}
+\end{align}
+
+
+% ============================================================
+\section{Foreign Economies}
+\label{sec:foreign}
+% ============================================================
+
+\subsection{Overview}
+
+The EU and US are each modelled as a two-sector representative-agent New Keynesian economy with tradeable and non-tradeable goods, a common labour supply curve, sector-specific New Keynesian Phillips Curves, and a Taylor rule. The structure is symmetric: we describe the EU bloc and note that the US bloc is analogous.
+
+\subsection{Prices and Real Interest Rate}
+
+EU prices are expressed in euros. The EU CPI aggregates tradeable and non-tradeable price levels:
+\begin{align}
+    P^{CPI}_{eu,t} &= \left[
+        \alpha^T_{eu}\!\left(P^*_{T,eu,t}\right)^{1-\eta^T_{eu}}
+        + (1-\alpha^T_{eu})\!\left(P^*_{NT,eu,t}\right)^{1-\eta^T_{eu}}
+    \right]^{\!\frac{1}{1-\eta^T_{eu}}},
+    \label{eq:PCPI_eu}
+\end{align}
+with CPI inflation $\pi^{CPI}_{eu,t} = P^{CPI}_{eu,t}/P^{CPI}_{eu,t-1} - 1$. The ex-ante real interest rate in the EU is
+\begin{align}
+    r^F_{eu,t} &= \frac{1+i_{eu,t}}{1+\pi^{CPI}_{eu,t+1}} - 1.
+    \label{eq:rF_eu}
+\end{align}
+
+\subsection{EU Households}
+
+The representative EU household has CRRA preferences and solves a frictionless consumption problem. The Euler equation is
+\begin{align}
+    C_{eu,t}^{-\sigma} &= \beta_{eu}\,(1+r^F_{eu,t})\,C_{eu,t+1}^{-\sigma},
+    \label{eq:Euler_eu}
+\end{align}
+where $\beta_{eu} = 1/(1+i^{ss}_{eu})$. A single labour supply condition holds for the EU workforce as a whole:
+\begin{align}
+    \varphi_{eu}\!\left(N_{eu,t} + N^{NT}_{eu,t}\right)^{\!\nu} &= \frac{W_{eu,t}}{P^{CPI}_{eu,t}}\,C_{eu,t}^{-\sigma},
+    \label{eq:LS_eu}
+\end{align}
+where $N_{eu,t}$ and $N^{NT}_{eu,t}$ are employment in the EU tradeable and non-tradeable sectors, and $\varphi_{eu}$ is calibrated to match steady-state labour supply.
+
+\subsection{EU Production and Material Inputs}
+
+EU tradeable production combines labour and materials under the same CES technology as in Denmark:
+\begin{align}
+    Y_{eu,t} &= Z_{eu,t}\left[
+        (1-\beta^M_{eu})^{1/\eta^{VA}_{eu}}\,N_{eu,t}^{\rho_{eu}}
+        + (\beta^M_{eu})^{1/\eta^{VA}_{eu}}\,M_{eu,t}^{\rho_{eu}}
+    \right]^{\!1/\rho_{eu}},
+    \label{eq:Y_eu}
+\end{align}
+with $\rho_{eu} = (\eta^{VA}_{eu}-1)/\eta^{VA}_{eu}$. EU materials are sourced from a CES bundle of domestic EU and US intermediates, with the US component priced at $(1+\tau^m_t)$ times the US price expressed in EUR. Non-tradeable production is linear: $Y^{NT}_{eu,t} = Z^{NT}_{eu,t}\,N^{NT}_{eu,t}$.
+
+EU consumption is split between tradeable and non-tradeable goods:
+\begin{align}
+    C^T_{eu,t} &= \alpha^T_{eu}\!\left(\frac{P^*_{T,eu,t}}{P^{CPI}_{eu,t}}\right)^{-\eta^T_{eu}} C_{eu,t}.
+    \label{eq:CT_eu}
+\end{align}
+
+\subsection{EU Phillips Curves and Taylor Rule}
+
+Separate New Keynesian Phillips Curves govern price dynamics in the EU tradeable and non-tradeable sectors:
+\begin{align}
+    \pi^T_{eu,t} &= \beta_{eu}\,\pi^T_{eu,t+1} + \kappa_{eu}(mc_{eu,t} - 1),
+    \label{eq:NKPC_T_eu}\\
+    \pi^{NT}_{eu,t} &= \beta_{eu}\,\pi^{NT}_{eu,t+1} + \kappa_{eu}(mc^{NT}_{eu,t} - 1),
+    \label{eq:NKPC_NT_eu}
+\end{align}
+where $mc_{eu,t}$ is the real marginal cost in the EU tradeable sector and $mc^{NT}_{eu,t} = W_{eu,t}/P^*_{NT,eu,t}$ is the real marginal cost in the non-tradeable sector. The EU central bank sets its nominal interest rate according to a Taylor rule:
+\begin{align}
+    i_{eu,t} &= i^{ss}_{eu} + \phi^\pi_{eu}\!\left(\pi^{CPI}_{eu,t} - \pi^{ss}_{eu}\right) + \varepsilon^i_{eu,t},
+    \label{eq:TR_eu}
+\end{align}
+with the US Taylor rule taking the analogous form.
+
+\subsection{EU Resource Constraint and Non-Tradeable Market Clearing}
+
+The EU aggregate resource constraint, expressed in units of the EU CPI basket, is
+\begin{align}
+    \frac{P^*_{T,eu,t}}{P^{CPI}_{eu,t}}\,Y_{eu,t}
+    + \frac{P^*_{NT,eu,t}}{P^{CPI}_{eu,t}}\,Y^{NT}_{eu,t}
+    &= C_{eu,t} + \frac{P^M_{eu,t}}{P^{CPI}_{eu,t}}\,M_{eu,t} - \mathcal{T}^{eu}_t,
+    \label{eq:RC_eu}
+\end{align}
+where $\mathcal{T}^{eu}_t = \frac{\tau^m_t}{1+\tau^m_t}\frac{P^M_{eu,us,t}}{P^{CPI}_{eu,t}}M_{eu,us,t}$ is the tariff cost embedded in EU imports of US materials. Non-tradeable market clearing requires
+\begin{align}
+    Y^{NT}_{eu,t} &= C^{NT}_{eu,t},
+    \label{eq:NT_eu}
+\end{align}
+where $C^{NT}_{eu,t} = (1-\alpha^T_{eu})(P^*_{NT,eu,t}/P^{CPI}_{eu,t})^{-\eta^T_{eu}}C_{eu,t}$.
+
+\subsection{Export Demand Scale}
+
+The demand scale factors in equations~\eqref{eq:exp_eu}--\eqref{eq:exp_us} are proportional to foreign tradeable consumption relative to its steady-state level:
+\begin{align}
+    M^{eu,*}_t &= \bar{M}^{eu,*}\,\frac{C^T_{eu,t}}{C^{T,ss}_{eu}},
+    \qquad
+    M^{us,*}_t = \bar{M}^{us,*}\,\frac{C^T_{us,t}}{C^{T,ss}_{us}},
+    \label{eq:Mstar}
+\end{align}
+where bars indicate steady-state values. This ensures that foreign demand for Danish goods expands and contracts with the overall level of foreign tradeable absorption.
+
+
+% ============================================================
+\section{Monetary Policy and Exchange Rates}
+\label{sec:monpol}
+% ============================================================
+
+\subsection{Danish Monetary Policy}
+
+In the baseline, Denmark operates a fixed exchange rate regime, maintaining the DKK/EUR rate at its steady-state level $\bar{\mathcal{E}}$:
+\begin{align}
+    \mathcal{E}_t &= \bar{\mathcal{E}}.
+    \label{eq:fixed_ER}
+\end{align}
+Under this regime, the domestic nominal interest rate $i_t$ is endogenously determined by the uncovered interest parity conditions below. As an alternative specification, a floating exchange rate regime is available, in which Denmark follows a Taylor rule:
+\begin{align}
+    i_t &= (1+i_{ss})\left(\frac{1+\pi_{t+1}}{1+\pi_{ss}}\right)^{\!\phi_\pi} - 1 + \varepsilon^i_t,
+    \label{eq:Taylor}
+\end{align}
+with $\phi_\pi > 1$ ensuring determinacy. In the floating regime the exchange rate $\mathcal{E}_t$ is endogenously determined.
+
+\subsection{Domestic Interest Rates}
+
+The ex-post real rate on household savings, used in the budget constraint~\eqref{eq:budget}, is
+\begin{align}
+    r^a_t &= \frac{1+i_{t-1}}{1+\pi_t} - 1,
+    \label{eq:ra}
+\end{align}
+where $\pi_t = P_t/P_{t-1} - 1$ is CPI inflation. The ex-ante real rate, $r_t = (1+i_t)/(1+\pi_{t+1}) - 1$, enters the UIP conditions.
+
+\subsection{Real Exchange Rates and Uncovered Interest Parity}
+
+The real exchange rates of Denmark against the EU and US are
+\begin{align}
+    Q_t &= \frac{P_{F,eu,t}}{P_t}, \qquad
+    Q^{US}_t = \frac{P_{F,us,t}}{P_t}.
+    \label{eq:RER}
+\end{align}
+No-arbitrage in international asset markets requires
+\begin{align}
+    1+r_t &= (1+r^F_{eu,t})\,\frac{Q_{t+1}}{Q_t},
+    \label{eq:UIP_eu}\\
+    1+r_t &= (1+r^F_{us,t})\,\frac{Q^{US}_{t+1}}{Q^{US}_t}.
+    \label{eq:UIP_us}
+\end{align}
+Under a fixed exchange rate, equations~\eqref{eq:UIP_eu}--\eqref{eq:UIP_us} jointly determine $i_t$ and $\mathcal{E}^{US}_t$ given the foreign interest rates $r^F_{eu,t}$ and $r^F_{us,t}$ from the respective Taylor rules.
+
+
+% ============================================================
+\section{Government}
+\label{sec:govt}
+% ============================================================
+
+The government issues one-period risk-free nominal bonds $B_t$, levies a proportional labour income tax at rate $\tau_t$, and purchases non-tradeable goods $G_t$. Import tariffs generate revenue that flows into the government budget.
+
+\subsection{Tariff Revenue}
+
+The government collects tariff revenue on US material imports and on Danish households' purchases of US consumer goods:
+\begin{align}
+    \mathcal{T}^{DK}_t &= \frac{\tau^m_t}{1+\tau^m_t}
+        \left(\frac{P_{M,us,t}}{P_t}\,M^{US}_{DK,t}
+        + \frac{P_{F,us,t}}{P_t}\,C_{TF,us,t}\right),
+    \label{eq:tariff_rev}
+\end{align}
+where $M^{US}_{DK,t} = \sum_{s\in T} M_{s,us,t}$ is total Danish industrial imports of US materials and $C_{TF,us,t}$ is household consumption of US goods.
+
+\subsection{Government Budget Constraint}
+
+Government debt follows a smoothing rule that channels tariff windfalls towards gradual debt retirement:
+\begin{align}
+    B_t &= B_{ss} + \phi_B\!\left[(B_{t-1} - B_{ss}) - \mathcal{T}^{DK}_t\right],
+    \label{eq:debt}
+\end{align}
+where $\phi_B \in (0,1)$ controls the speed of debt adjustment. The labour income tax rate is then determined residually from the period-by-period budget constraint:
+\begin{align}
+    \tau_t \cdot \underbrace{\sum_s w_{s,t}\,N_{s,t}}_{\text{tax base}}
+    &= (1+r^a_t)\,B_{t-1} + \frac{P_{NT,t}}{P_t}\,G_t - \mathcal{T}^{DK}_t - B_t.
+    \label{eq:govt_bc}
+\end{align}
+In the steady state, $B_{ss} = A^{hh}_{ss}$ (government bonds are the only asset available to households) and $G_{ss}$ is set so that $\tau_{ss} = 0.30$.
+
+
+% ============================================================
+\section{Market Clearing}
+\label{sec:mktclearing}
+% ============================================================
+
+\subsection{Goods Markets}
+
+Each Danish tradeable sector $s$ clears when domestic household demand plus export demand from EU and US buyers equals output:
+\begin{align}
+    Y_{s,t} &= C_{TH,s,t} + C^*_{TH,s,eu,t} + C^*_{TH,s,us,t},
+    \qquad s \in \{\text{HH},\text{HL},\text{LH},\text{LL}\}.
+    \label{eq:clearing_T}
+\end{align}
+The non-tradeable market clears when output equals the sum of household consumption and government spending:
+\begin{align}
+    Y_{NT,t} &= C_{NT,t} + G_t.
+    \label{eq:clearing_NT}
+\end{align}
+The steady-state version of~\eqref{eq:clearing_NT} pins down the tradeable expenditure share: $\alpha_T = 1 - (Y_{NT,ss} - G_{ss})/C^{hh}_{ss}$.
+
+\subsection{Asset Market}
+
+Since the only financial instrument is the domestic government bond, the asset market clears with
+\begin{align}
+    A^{hh}_t &= B_t.
+    \label{eq:asset_clearing}
+\end{align}
+
+
+% ============================================================
+\section{National Accounting}
+\label{sec:accounting}
+% ============================================================
+
+Real GDP is the sum of sectoral value added at constant CPI prices, plus tariff revenue:
+\begin{align}
+    \text{GDP}_t &= \frac{1}{P_t}
+        \sum_{s \in T}\!\left(P_{s,t}\,Y_{s,t} - P_{M,s,t}\,M_{s,t}\right)
+        + \frac{P_{NT,t}}{P_t}\,Y_{NT,t}
+        + \mathcal{T}^{DK}_t.
+    \label{eq:GDP}
+\end{align}
+Net exports equal GDP minus private and public absorption:
+\begin{align}
+    NX_t &= \text{GDP}_t - C^{hh}_t - \frac{P_{NT,t}}{P_t}\,G_t.
+    \label{eq:NX}
+\end{align}
+Net foreign assets are the difference between household savings and government debt:
+\begin{align}
+    \text{NFA}_t &= A^{hh}_t - B_t.
+    \label{eq:NFA}
+\end{align}
+The current account is
+\begin{align}
+    CA_t &= NX_t + r^a_t\,\text{NFA}_{t-1}.
+    \label{eq:CA}
+\end{align}
+By Walras's law, the change in net foreign assets must equal the current account in every period:
+\begin{align}
+    \text{NFA}_t - \text{NFA}_{t-1} &= CA_t.
+    \label{eq:walras}
+\end{align}
+Equation~\eqref{eq:walras} is redundant given the other equilibrium conditions and serves as a numerical check on the solution.
+
+
+% ============================================================
+\begin{thebibliography}{9}
+
+\bibitem[Carroll(2006)]{carroll_2006}
+Carroll, C.~D. (2006).
+\newblock The method of endogenous gridpoints for solving dynamic stochastic optimization problems.
+\newblock \emph{Economics Letters}, 91(3):312--320.
+
+\bibitem[Erceg, Henderson, and Levin(2000)]{erceg_henderson_levin_2000}
+Erceg, C.~J., Henderson, D.~W., and Levin, A.~T. (2000).
+\newblock Optimal monetary policy with staggered wage and price contracts.
+\newblock \emph{Journal of Monetary Economics}, 46(2):281--313.
+
+\bibitem[Rouwenhorst(1995)]{rouwenhorst_1995}
+Rouwenhorst, K.~G. (1995).
+\newblock Asset pricing implications of equilibrium business cycle models.
+\newblock In Cooley, T.~F., editor, \emph{Frontiers of Business Cycle Research}, pages 294--330. Princeton University Press.
+
+\end{thebibliography}
+
+\end{document}
