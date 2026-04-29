@@ -96,11 +96,11 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.alphaT = np.nan # share of tradeable goods in home consumption (determined in ss)
         par.etaT = 2.0 # elasticity of substitution between tradeable and non-tradeable goods
 
-        par.alphaF = 1/3 # flagged
-        par.alpha_us = 0.05 # flagged 
+        par.alphaF = 1/3 # share of foreign goods in home consumption (calibrated in SS)
+        par.alpha_us = 0.05 # share of US goods in home consumption (calibrated in SS)
 
-        par.etaF = 2.0
-        par.etaF_us = 2.0
+        par.etaF = 2.0 # elasticity of substitution between domestic and foreign goods in home consumption
+        par.etaF_us = 2.0 # elasticity of substitution between US and non-US goods in home consumption
 
         # Home-tradeable 4-sector CES weights (calibrated in SS, shared by all buyers)
         par.omega_TH_HH = 0.56 # high material, high US consumption share of total tradable consumption 
@@ -110,14 +110,14 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.eta_TH = 2.0 # elasticity of substitution between the 4 tradable sectors in home consumption
 
         # Destination-specific sector CES weights (calibrated in SS from share_X_us_H/L)
-        par.omega_TH_HH_eu = np.nan
-        par.omega_TH_HL_eu = np.nan
-        par.omega_TH_LH_eu = np.nan
-        par.omega_TH_LL_eu = np.nan
-        par.omega_TH_HH_us = np.nan
-        par.omega_TH_HL_us = np.nan
-        par.omega_TH_LH_us = np.nan
-        par.omega_TH_LL_us = np.nan
+        par.omega_TH_HH_eu = np.nan # high material, high US consumption share in EU consumption
+        par.omega_TH_HL_eu = np.nan # high material, low US consumption share in EU consumption
+        par.omega_TH_LH_eu = np.nan # low material, high US consumption share in EU consumption
+        par.omega_TH_LL_eu = np.nan # low material, low US consumption share in EU consumption
+        par.omega_TH_HH_us = np.nan # high material, high US consumption share in US consumption
+        par.omega_TH_HL_us = np.nan # high material, low US consumption share in US consumption
+        par.omega_TH_LH_us = np.nan # low material, high US consumption share in US consumption
+        par.omega_TH_LL_us = np.nan # low material, low US consumption share in US consumption
 
         # Labor disutility (calibrated in SS)
         par.varphiHH = np.nan
@@ -170,8 +170,8 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.M_eu_s_ss = np.nan # size of EU market (calibrated in SS)
  
         # EU non-tradable sector
-        par.alphaT_eu = 0.70   # tradable share in EU consumption (free parameter)
-        par.etaT_eu  = 1.50    # T vs NT substitution elasticity in EU (why not 2.0 as DK)
+        par.alphaT_eu = 0.70 # tradable share in EU consumption (free parameter)
+        par.etaT_eu  = 1.50 # T vs NT substitution elasticity in EU (why not 2.0 as DK)
 
         # US economy
         par.i_us_ss = 0.005 # exogenous US interest rate (assumed to be the same as EU for simplicity)
