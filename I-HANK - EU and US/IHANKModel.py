@@ -91,7 +91,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         # b. preferences
         par.beta = 0.975 # discount factor
-        par.sigma = 2.0 # inverse intertemporal elasticity of substitution 
+        par.sigma = 2.5 # inverse intertemporal elasticity of substitution 
 
         par.alphaT = np.nan # share of tradeable goods in home consumption (determined in ss)
         par.etaT = 2.0 # elasticity of substitution between tradeable and non-tradeable goods
@@ -128,8 +128,8 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.nu = 2.0 # inverse Frisch elasticity set to match a Frisch elasticity of 0.5 (literature) (1.0 before) 
 
         # c. income parameters
-        par.rho_z = 0.95 # AR(1) parameter for idiosyncratic productivity
-        par.sigma_psi = 0.10 # std. of idiosyncratic productivity shock
+        par.rho_z = 0.966 # AR(1) parameter for idiosyncratic productivity
+        par.sigma_psi = 0.13 # std. of idiosyncratic productivity shock
 
         # d. price setting
         par.kappa = 0.05 # matches literature (0.1 before)
@@ -156,7 +156,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphi_eu = np.nan # calibrated in SS 
 
         par.kappa_eu = 0.05 # matches Danish kappa 
-        par.phi_pi_eu = 1.5 # matches Danish phi_pi
+        par.phi_pi_eu = 1.25 # matches Danish phi_pi
 
         par.W_eu_ss = 1.0 # normalized wage in EU steady state
         par.Y_eu_ss = 1.0 # normalized output in EU steady state
@@ -181,7 +181,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphi_us = np.nan # calibrated in SS
 
         par.kappa_us = 0.05 # matches Danish kappa
-        par.phi_pi_us = 1.5 # matches Danish phi_pi
+        par.phi_pi_us = 1.25 # matches Danish phi_pi
 
         par.W_us_ss = 1.0 # normalized wage in US steady state
         par.Y_us_ss = 1.0 # normalized output in US steady state
@@ -199,12 +199,12 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.etaT_us   = 1.50   # T vs NT substitution elasticity in US
 
         # f. government
-        par.tau_ss = 0.30 # tax rate on labor income
+        par.tau_ss = 0.361 # tax rate on labor income
         par.phi_B = 0.93 # debt feedback in fiscal rule
 
         # central bank
         par.float = False # fixed exchange rate
-        par.phi = 1.5 # Taylor rule coefficient on inflation
+        par.phi = 1.25 # Taylor rule coefficient on inflation
 
         # g. grids
         par.a_min = 0.0 
