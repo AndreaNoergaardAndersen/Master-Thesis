@@ -325,8 +325,8 @@ def production(par, ini, ss,
 def prices(par, ini, ss,
            PT_eu_s, PT_us_s, E, E_us,
            PHH, PHL, PLH, PLL, PNT, WHH, WHL, WLH, WLL, WNT,
-           PF_eu, PF_us, PF_TF,
-           PTH, PTH_eu_s, PTH_us_s,
+           PF_eu, PF_us, PF_eu_s, PF_us_s,
+           PF_TF, PTH, PTH_eu_s, PTH_us_s,
            PT, P, Q, Q_us,
            wHH, wHL, wLH, wLL, wNT, tau_x, tau_m):
     """
@@ -358,8 +358,8 @@ def prices(par, ini, ss,
     P[:]  = price_index(PT,    PNT,  par.etaT,  par.alphaT)
 
     # e. real exchange rates
-    Q[:]    = PF_eu / P
-    Q_us[:] = PF_us / P
+    Q[:]    = (PF_eu_s*E) / P
+    Q_us[:] = (PF_us_s*E_us) / P
 
     # f. real wages
     wHH[:] = WHH / P
