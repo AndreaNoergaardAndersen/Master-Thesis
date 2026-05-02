@@ -90,17 +90,17 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # sNT = 1 - sHH - sHL - sLH - sLL (derived)
 
         # b. preferences
-        par.beta = 0.975
-        par.sigma = 2.0
+        par.beta = 0.975 
+        par.sigma = 2.0 # MPC for lav når 2.5  #intertemporal elasticity of substitution
 
         par.alphaT = np.nan
-        par.etaT = 2.0
+        par.etaT = 0.5 #2.0 #VIRKER
 
         par.alphaF = 1/3
         par.alpha_us = 0.05
 
-        par.etaF = 2.0
-        par.etaF_us = 2.0
+        par.etaF = 1.5 #VIRKER
+        par.etaF_us = 3.0 #VIRKER
 
         # Home-tradeable 4-sector CES weights (calibrated in SS, shared by all buyers)
         par.omega_TH_HH = np.nan
@@ -125,14 +125,14 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphiLH = np.nan
         par.varphiLL = np.nan
         par.varphiNT = np.nan
-        par.nu = 1.0
+        par.nu = 2.0
 
         # c. income parameters
         par.rho_z = 0.95
         par.sigma_psi = 0.10
 
         # d. price setting
-        par.kappa = 0.1
+        par.kappa = 0.05 #This works
         par.muw = 1.2
 
         # Danish production — material parameters shared within H/L group
