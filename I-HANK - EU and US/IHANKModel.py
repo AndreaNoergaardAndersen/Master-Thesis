@@ -90,34 +90,34 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # sNT = 1 - sHH - sHL - sLH - sLL (derived)
 
         # b. preferences
-        par.beta = 0.975 # discount factor
-        par.sigma = 2.5 # inverse intertemporal elasticity of substitution 
+        par.beta = 0.975
+        par.sigma = 2.0
 
-        par.alphaT = np.nan # share of tradeable goods in home consumption (determined in ss)
-        par.etaT = 2.0 # elasticity of substitution between tradeable and non-tradeable goods
+        par.alphaT = np.nan
+        par.etaT = 2.0
 
-        par.alphaF = 1/3 # share of foreign goods in home consumption (calibrated in SS)
-        par.alpha_us = 0.05 # share of US goods in home consumption (calibrated in SS)
+        par.alphaF = 1/3
+        par.alpha_us = 0.05
 
-        par.etaF = 2.0 # elasticity of substitution between domestic and foreign goods in home consumption
-        par.etaF_us = 2.0 # elasticity of substitution between US and non-US goods in home consumption
+        par.etaF = 2.0
+        par.etaF_us = 2.0
 
         # Home-tradeable 4-sector CES weights (calibrated in SS, shared by all buyers)
-        par.omega_TH_HH = 0.56 # high material, high US consumption share of total tradable consumption 
-        par.omega_TH_HL = 0.25 # high material, low US consumption share of total tradable consumption
-        par.omega_TH_LH = 0.12 # low material, high US consumption share of total tradable consumption
-        par.omega_TH_LL = 0.07 # low material, low US consumption share of total tradable consumption  
-        par.eta_TH = 2.0 # elasticity of substitution between the 4 tradable sectors in home consumption
+        par.omega_TH_HH = np.nan
+        par.omega_TH_HL = np.nan
+        par.omega_TH_LH = np.nan
+        par.omega_TH_LL = np.nan  # stored explicitly for symmetry
+        par.eta_TH = 2.0
 
         # Destination-specific sector CES weights (calibrated in SS from share_X_us_H/L)
-        par.omega_TH_HH_eu = np.nan # high material, high US consumption share in EU consumption
-        par.omega_TH_HL_eu = np.nan # high material, low US consumption share in EU consumption
-        par.omega_TH_LH_eu = np.nan # low material, high US consumption share in EU consumption
-        par.omega_TH_LL_eu = np.nan # low material, low US consumption share in EU consumption
-        par.omega_TH_HH_us = np.nan # high material, high US consumption share in US consumption
-        par.omega_TH_HL_us = np.nan # high material, low US consumption share in US consumption
-        par.omega_TH_LH_us = np.nan # low material, high US consumption share in US consumption
-        par.omega_TH_LL_us = np.nan # low material, low US consumption share in US consumption
+        par.omega_TH_HH_eu = np.nan
+        par.omega_TH_HL_eu = np.nan
+        par.omega_TH_LH_eu = np.nan
+        par.omega_TH_LL_eu = np.nan
+        par.omega_TH_HH_us = np.nan
+        par.omega_TH_HL_us = np.nan
+        par.omega_TH_LH_us = np.nan
+        par.omega_TH_LL_us = np.nan
 
         # Labor disutility (calibrated in SS)
         par.varphiHH = np.nan
@@ -125,89 +125,89 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphiLH = np.nan
         par.varphiLL = np.nan
         par.varphiNT = np.nan
-        par.nu = 2.0 # inverse Frisch elasticity set to match a Frisch elasticity of 0.5 (literature) (1.0 before) 
+        par.nu = 1.0
 
         # c. income parameters
-        par.rho_z = 0.966 # AR(1) parameter for idiosyncratic productivity
-        par.sigma_psi = 0.13 # std. of idiosyncratic productivity shock
+        par.rho_z = 0.95
+        par.sigma_psi = 0.10
 
         # d. price setting
-        par.kappa = 0.05 # matches literature (0.1 before)
-        par.muw = 1.2 # wage mark up
+        par.kappa = 0.1
+        par.muw = 1.2
 
         # Danish production — material parameters shared within H/L group
         par.beta_M_dk_h = 1/3       # material share, high-material sectors (HH, HL)
         par.beta_M_dk_l = 1/3       # material share, low-material sectors  (LH, LL)
         par.alpha_M_dk_us_h = 0.27  # US share in materials, high-material sectors
         par.alpha_M_dk_us_l = 0.17  # US share in materials, low-material sectors
-        par.eta_VA_dk = 1.50 # elasticity of substitution between value-added (labour) and materials in Danish production
-        par.eta_M_dk = 1.50 # elasticity of substitution between US and EU materials in Danish production
+        par.eta_VA_dk = 1.50
+        par.eta_M_dk = 1.50
 
         # e. foreign economy — sector-specific US export shares
         par.share_X_us_H = 0.20   # HH and LH: high US export share
         par.share_X_us_L = 0.05   # HL and LL: low US export share
-        par.eta_s = 2.0 # Armington elasticity of foreign demand
+        par.eta_s = 2.0
 
         # EU economy
-        par.i_eu_ss = 0.005 # exogenous EU interest rate
-        par.beta_eu = 1.0/(1.0+par.i_eu_ss) # implied discount factor from interest rate, but will be adjusted in SS to match the Euler equation
-        par.sigma_eu = par.sigma # assume same intertemporal elasticity of substitution in EU
-        par.nu_eu = par.nu # matches Danish inverse Frisch elasticity 
-        par.varphi_eu = np.nan # calibrated in SS 
+        par.i_eu_ss = 0.005
+        par.beta_eu = 1.0/(1.0+par.i_eu_ss)
+        par.sigma_eu = par.sigma
+        par.nu_eu = par.nu
+        par.varphi_eu = np.nan
 
-        par.kappa_eu = 0.05 # matches Danish kappa 
-        par.phi_pi_eu = 1.25 # matches Danish phi_pi
+        par.kappa_eu = 0.05
+        par.phi_pi_eu = 1.5
 
-        par.W_eu_ss = 1.0 # normalized wage in EU steady state
-        par.Y_eu_ss = 1.0 # normalized output in EU steady state
-        par.chi_M_eu = 1.0 # scaling parameter for materials in EU production (calibrated in SS)
+        par.W_eu_ss = 1.0
+        par.Y_eu_ss = 1.0
+        par.chi_M_eu = 1.0
 
-        par.beta_M_eu = 0.10 # share of materials in EU production 
-        par.eta_VA_eu = 1.50  # elasticity of substitution between value-added (labour) and materials in EU production 
-        par.alpha_M_eu_us = 0.10 # share of US materials in EU production
-        par.eta_M_eu = 1.50 # elasticity of substitution between US and non-US materials in EU production
+        par.beta_M_eu = 0.10
+        par.eta_VA_eu = 1.50
+        par.alpha_M_eu_us = 0.10
+        par.eta_M_eu = 1.50
 
-        par.M_eu_s_ss = np.nan # size of EU market (calibrated in SS)
- 
+        par.M_eu_s_ss = np.nan
+
         # EU non-tradable sector
-        par.alphaT_eu = 0.70 # tradable share in EU consumption (free parameter)
-        par.etaT_eu  = 1.50 # T vs NT substitution elasticity in EU (why not 2.0 as DK)
+        par.alphaT_eu = 0.70   # tradable share in EU consumption (free parameter)
+        par.etaT_eu  = 1.50    # T vs NT substitution elasticity in EU
 
         # US economy
-        par.i_us_ss = 0.005 # exogenous US interest rate (assumed to be the same as EU for simplicity)
-        par.beta_us = 1.0/(1.0+par.i_us_ss) # implied discount factor from interest rate, but will be adjusted in SS to match the Euler equation
-        par.sigma_us = par.sigma # assume same intertemporal elasticity of substitution in US
-        par.nu_us = par.nu # matches Danish inverse Frisch elasticity
-        par.varphi_us = np.nan # calibrated in SS
+        par.i_us_ss = 0.005
+        par.beta_us = 1.0/(1.0+par.i_us_ss)
+        par.sigma_us = par.sigma
+        par.nu_us = par.nu
+        par.varphi_us = np.nan
 
-        par.kappa_us = 0.05 # matches Danish kappa
-        par.phi_pi_us = 1.25 # matches Danish phi_pi
+        par.kappa_us = 0.05
+        par.phi_pi_us = 1.5
 
-        par.W_us_ss = 1.0 # normalized wage in US steady state
-        par.Y_us_ss = 1.0 # normalized output in US steady state
-        par.chi_M_us = 1.0 # scaling parameter for materials in US production (calibrated in SS)
+        par.W_us_ss = 1.0
+        par.Y_us_ss = 1.0
+        par.chi_M_us = 1.0
 
-        par.beta_M_us = 0.10 # share of materials in US production
-        par.eta_VA_us = 1.50 # elasticity of substitution between value-added (labour) and materials in US production
-        par.alpha_M_us_us = 0.10 # share of US materials in US production
-        par.eta_M_us = 1.50 # elasticity of substitution between US and non-US materials in US production
+        par.beta_M_us = 0.10
+        par.eta_VA_us = 1.50
+        par.alpha_M_us_us = 0.10
+        par.eta_M_us = 1.50
 
-        par.M_us_s_ss = np.nan # size of US market (calibrated in SS)
+        par.M_us_s_ss = np.nan
 
         # US non-tradable sector (mirrors EU)
         par.alphaT_us = 0.70   # tradable share in US consumption
         par.etaT_us   = 1.50   # T vs NT substitution elasticity in US
 
         # f. government
-        par.tau_ss = 0.361 # tax rate on labor income
-        par.phi_B = 0.93 # debt feedback in fiscal rule
+        par.tau_ss = 0.30
+        par.phi_B = 0.93
 
         # central bank
-        par.float = False # fixed exchange rate
-        par.phi = 1.25 # Taylor rule coefficient on inflation
+        par.float = False
+        par.phi = 1.5
 
         # g. grids
-        par.a_min = 0.0 
+        par.a_min = 0.0
         par.a_max = 50.0
         par.Na = 300
 

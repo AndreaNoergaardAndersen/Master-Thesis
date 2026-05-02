@@ -325,8 +325,8 @@ def production(par, ini, ss,
 def prices(par, ini, ss,
            PT_eu_s, PT_us_s, E, E_us,
            PHH, PHL, PLH, PLL, PNT, WHH, WHL, WLH, WLL, WNT,
-           PF_eu, PF_us, PF_eu_s, PF_us_s,
-           PF_TF, PTH, PTH_eu_s, PTH_us_s,
+           PF_eu, PF_us, PF_TF,
+           PTH, PTH_eu_s, PTH_us_s,
            PT, P, Q, Q_us,
            wHH, wHL, wLH, wLL, wNT, tau_x, tau_m):
     """
@@ -340,8 +340,8 @@ def prices(par, ini, ss,
     # a. foreign prices in DKK
     # Danish HH face EU tradable price (NT goods are not traded)
     PF_eu[:] = PT_eu_s * E
-    PF_us[:] = (1+tau_m) * PT_us_s * E_us
-    #PF_us[:] = PT_us_s * E_us
+    #PF_us[:] = (1+tau_m) * PT_us_s * E_us
+    PF_us[:] = PT_us_s * E_us
     # b. home tradeable price index (shared across domestic, EU and US buyers)
     PTH[:] = price_index_4(PHH, PHL, PLH, PLL, par.eta_TH,
                            par.omega_TH_HH, par.omega_TH_HL, par.omega_TH_LH, par.omega_TH_LL)
@@ -358,8 +358,8 @@ def prices(par, ini, ss,
     P[:]  = price_index(PT,    PNT,  par.etaT,  par.alphaT)
 
     # e. real exchange rates
-    Q[:]    = (PF_eu_s*E) / P
-    Q_us[:] = (PF_us_s*E_us) / P
+    Q[:]    = PF_eu / P
+    Q_us[:] = PF_us / P
 
     # f. real wages
     wHH[:] = WHH / P
@@ -426,7 +426,7 @@ def government(par, ini, ss,
                     + wLH[t]*NLH[t] + wLL[t]*NLL[t] + wNT[t]*NNT[t])
         B_lag = prev(B, t, ini.B)
         M_us_total = M_dk_us_h[t] + M_dk_us_hx[t] + M_dk_us_l[t] + M_dk_us_lx[t]
-        revenue = tau_m[t]/(1+tau_m[t]) * PM_dk_us[t] / P[t] * M_us_total + tau_m[t]/(1+tau_m[t]) * PF_us[t] / P[t] *CTF_us[t]
+        revenue = tau_m[t]/(1+tau_m[t]) * PM_dk_us[t] / P[t] * M_us_total #+ tau_m[t]/(1+tau_m[t]) * PF_us[t] / P[t] *CTF_us[t]
         B[t] = ss.B + par.phi_B*((B_lag - ss.B) - revenue)
         tau[t] = ((1.0 + ra[t])*B_lag + PNT[t]/P[t]*G[t] - revenue - B[t]) / tax_base
         inc_HH[:] = (1-tau)*wHH*NHH
@@ -567,7 +567,7 @@ def accounting(par, ini, ss,
                PF_us, CTF_us):
 
     M_us_total = M_dk_us_h + M_dk_us_hx + M_dk_us_l + M_dk_us_lx
-    tariff_rev = tau_m/(1+tau_m) * PM_dk_us/P * M_us_total + tau_m/(1+tau_m) * PF_us/P * CTF_us
+    tariff_rev = tau_m/(1+tau_m) * PM_dk_us/P * M_us_total #+ tau_m/(1+tau_m) * PF_us/P * CTF_us
 
     # GDP = value added across all sectors
     GDP[:] = (PHH*YHH - PM_dk_h*M_dk_h
