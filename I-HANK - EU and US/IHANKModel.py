@@ -94,12 +94,12 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.sigma = 2.0 # MPC for lav når 2.5  #intertemporal elasticity of substitution
 
         par.alphaT = np.nan
-        par.etaT = 0.5 #2.0 #VIRKER
+        par.etaT = 2.0 #0.5 VIRKER IKKE
 
-        par.alphaF = 1/3
-        par.alpha_us = 0.05
+        par.alphaF = 0.15 #1/3 VIRKER
+        par.alpha_us = 0.20 #0.05 VIRKER
 
-        par.etaF = 1.5 #VIRKER
+        par.etaF = 1.5 #2.0 #VIRKER
         par.etaF_us = 3.0 #VIRKER
 
         # Home-tradeable 4-sector CES weights (calibrated in SS, shared by all buyers)
@@ -125,14 +125,14 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphiLH = np.nan
         par.varphiLL = np.nan
         par.varphiNT = np.nan
-        par.nu = 2.0
+        par.nu = 1.0
 
         # c. income parameters
         par.rho_z = 0.95
         par.sigma_psi = 0.10
 
         # d. price setting
-        par.kappa = 0.05 #This works
+        par.kappa = 0.05 #VIRKER
         par.muw = 1.2
 
         # Danish production — material parameters shared within H/L group
@@ -140,13 +140,13 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.beta_M_dk_l = 1/3       # material share, low-material sectors  (LH, LL)
         par.alpha_M_dk_us_h = 0.27  # US share in materials, high-material sectors
         par.alpha_M_dk_us_l = 0.17  # US share in materials, low-material sectors
-        par.eta_VA_dk = 1.50
-        par.eta_M_dk = 1.50
+        par.eta_VA_dk = 0.50 #VIRKER
+        par.eta_M_dk = 0.50 #VIRKER
 
         # e. foreign economy — sector-specific US export shares
         par.share_X_us_H = 0.20   # HH and LH: high US export share
         par.share_X_us_L = 0.05   # HL and LL: low US export share
-        par.eta_s = 2.0
+        par.eta_s = par.etaF  #VIRKER
 
         # EU economy
         par.i_eu_ss = 0.005
@@ -156,16 +156,16 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphi_eu = np.nan
 
         par.kappa_eu = 0.05
-        par.phi_pi_eu = 1.5
+        par.phi_pi_eu = 1.5 #VIRKER
 
         par.W_eu_ss = 1.0
         par.Y_eu_ss = 1.0
-        par.chi_M_eu = 1.0
+        #par.chi_M_eu = 1.0
 
-        par.beta_M_eu = 0.10
-        par.eta_VA_eu = 1.50
-        par.alpha_M_eu_us = 0.10
-        par.eta_M_eu = 1.50
+        par.beta_M_eu = 1/3 #0.10 VIRKER
+        par.eta_VA_eu = par.eta_VA_dk #VIRKER
+        par.alpha_M_eu_us = 0.03 #VIRKER
+        par.eta_M_eu = par.eta_M_dk #VIRKER
 
         par.M_eu_s_ss = np.nan
 
@@ -181,16 +181,16 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphi_us = np.nan
 
         par.kappa_us = 0.05
-        par.phi_pi_us = 1.5
+        par.phi_pi_us = 1.5 #VIRKER
 
         par.W_us_ss = 1.0
         par.Y_us_ss = 1.0
-        par.chi_M_us = 1.0
+        #par.chi_M_us = 1.0
 
-        par.beta_M_us = 0.10
-        par.eta_VA_us = 1.50
-        par.alpha_M_us_us = 0.10
-        par.eta_M_us = 1.50
+        par.beta_M_us = par.beta_M_eu #VIRKER
+        par.eta_VA_us = par.eta_VA_dk #VIRKER
+        par.alpha_M_us_us = 0.97 #VIRKER
+        par.eta_M_us = par.eta_M_dk #VIRKER
 
         par.M_us_s_ss = np.nan
 
