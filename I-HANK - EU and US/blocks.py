@@ -13,6 +13,8 @@ def price_index(P1,P2,eta,alpha):
 
 @nb.njit
 def price_index_4(P1,P2,P3,P4,eta,o1,o2,o3,o4):
+    if eta == 1.0:
+        return P1**o1 * P2**o2 * P3**o3 * P4**o4
     return (o1*P1**(1-eta)+o2*P2**(1-eta)+o3*P3**(1-eta)+o4*P4**(1-eta))**(1/(1-eta))
 
 @nb.njit
@@ -465,14 +467,34 @@ def NKWCs(par, ini, ss,
     NKWCNT_res[:] = piWNT - (par.kappa*(par.varphiNT*(NNT/sNT)**par.nu
                               - 1/par.muw*(1-tau)*wNT*UC_NT_hh) + beta*piWNT_plus)
 
-@nb.njit
-def UIP(par,ini,ss,Q,r,rF_eu,UIP_res, Q_us, rF_us, UIP_res_us):
+#@nb.njit
+#def UIP(par,ini,ss,Q,r,rF_eu,UIP_res, Q_us, rF_us, UIP_res_us):
 
-    Q_plus = lead(Q,ss.Q)
-    UIP_res[:] = (1+r) - (1+rF_eu)*Q_plus/Q
+#    Q_plus = lead(Q,ss.Q)
+#    UIP_res[:] = (1+r) - (1+rF_eu)*Q_plus/Q
+
+#    Q_us_plus = lead(Q_us, ss.Q_us)
+#    UIP_res_us[:] = (1+r) - (1+rF_us)*Q_us_plus/Q_us
+
+#Test med etaT=0.5
+@nb.njit
+def UIP(par, ini, ss, Q, r, rF_eu, UIP_res, Q_us, rF_us, UIP_res_us, A_hh, B):
+
+    # SGU (2003) debt-elastic wedge.
+    # ss.NFA = ss.A_hh - ss.B = 0 in this model (steady_state.py line 286 sets ss.B = ss.A_hh),
+    # so the deviation is just (A_hh - B)/GDP and the wedge vanishes at the SS.
+    NFA_dev = (A_hh - B) / ss.GDP
+
+    # Effective foreign rates: when the country becomes more indebted (NFA falls below SS),
+    # the rate paid on foreign borrowing rises, pulling NFA back up.
+    rF_eu_eff = rF_eu - par.psi_NFA * NFA_dev
+    rF_us_eff = rF_us - par.psi_NFA * NFA_dev
+
+    Q_plus = lead(Q, ss.Q)
+    UIP_res[:] = (1+r) - (1+rF_eu_eff) * Q_plus / Q
 
     Q_us_plus = lead(Q_us, ss.Q_us)
-    UIP_res_us[:] = (1+r) - (1+rF_us)*Q_us_plus/Q_us
+    UIP_res_us[:] = (1+r) - (1+rF_us_eff) * Q_us_plus / Q_us
 
 @nb.njit
 def consumption(par, ini, ss,

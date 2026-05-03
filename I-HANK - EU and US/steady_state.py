@@ -452,3 +452,4 @@ def find_ss(model, do_print=False):
         print(f'{par.omega_TH_HL_us = :.3f}')
         print(f'{par.omega_TH_LH_us = :.3f}')
         print(f'{par.omega_TH_LL_us = :.3f}')
+        print(f'{ss.D[:, :, 0].sum() = :.3f}')

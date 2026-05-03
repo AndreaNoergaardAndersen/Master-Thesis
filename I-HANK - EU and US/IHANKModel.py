@@ -90,8 +90,8 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # sNT = 1 - sHH - sHL - sLH - sLL (derived)
 
         # b. preferences
-        par.beta = 0.975 
-        par.sigma = 2.0 # MPC for lav når 2.5  #intertemporal elasticity of substitution
+        par.beta = 0.975 # 0.9843 #0.975 
+        par.sigma = 2.0 #1.5 #Forsøg med etaT # 2.0 # MPC for lav når 2.5  #intertemporal elasticity of substitution
 
         par.alphaT = np.nan
         par.etaT = 2.0 #0.5 VIRKER IKKE
@@ -107,7 +107,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.omega_TH_HL = np.nan
         par.omega_TH_LH = np.nan
         par.omega_TH_LL = np.nan  # stored explicitly for symmetry
-        par.eta_TH = 2.0
+        par.eta_TH = 1.0 # 2.0 #VIRKER
 
         # Destination-specific sector CES weights (calibrated in SS from share_X_us_H/L)
         par.omega_TH_HH_eu = np.nan
@@ -125,11 +125,11 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphiLH = np.nan
         par.varphiLL = np.nan
         par.varphiNT = np.nan
-        par.nu = 1.0
+        par.nu = 1.0 # 2.0 #forsøg med etaT
 
         # c. income parameters
         par.rho_z = 0.95
-        par.sigma_psi = 0.10
+        par.sigma_psi = 0.10 #0.13 VIRKER IKKE
 
         # d. price setting
         par.kappa = 0.05 #VIRKER
@@ -144,8 +144,8 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.eta_M_dk = 0.50 #VIRKER
 
         # e. foreign economy — sector-specific US export shares
-        par.share_X_us_H = 0.20   # HH and LH: high US export share
-        par.share_X_us_L = 0.05   # HL and LL: low US export share
+        par.share_X_us_H = 0.80   # HH and LH: high US export share #VIRKER - skal rettes
+        par.share_X_us_L = 0.07   # HL and LL: low US export share #VIRKER - skal rettes
         par.eta_s = par.etaF  #VIRKER
 
         # EU economy
@@ -160,7 +160,6 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         par.W_eu_ss = 1.0
         par.Y_eu_ss = 1.0
-        #par.chi_M_eu = 1.0
 
         par.beta_M_eu = 1/3 #0.10 VIRKER
         par.eta_VA_eu = par.eta_VA_dk #VIRKER
@@ -171,7 +170,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         # EU non-tradable sector
         par.alphaT_eu = 0.70   # tradable share in EU consumption (free parameter)
-        par.etaT_eu  = 1.50    # T vs NT substitution elasticity in EU
+        par.etaT_eu  = 0.50 #VIRKER #    # T vs NT substitution elasticity in EU
 
         # US economy
         par.i_us_ss = 0.005
@@ -185,7 +184,6 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         par.W_us_ss = 1.0
         par.Y_us_ss = 1.0
-        #par.chi_M_us = 1.0
 
         par.beta_M_us = par.beta_M_eu #VIRKER
         par.eta_VA_us = par.eta_VA_dk #VIRKER
@@ -196,7 +194,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         # US non-tradable sector (mirrors EU)
         par.alphaT_us = 0.70   # tradable share in US consumption
-        par.etaT_us   = 1.50   # T vs NT substitution elasticity in US
+        par.etaT_us   = 0.50 #VIRKER #   # T vs NT substitution elasticity in US
 
         # f. government
         par.tau_ss = 0.30
@@ -205,6 +203,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # central bank
         par.float = False
         par.phi = 1.5
+        par.psi_NFA = 0.0 #5e-2
 
         # g. grids
         par.a_min = 0.0
@@ -219,7 +218,6 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.jump_tau_x = 0.0
         par.rho_tau_x = 0.00
         par.std_tau_x = 0.00
-        par.tariff_rev_lumpsum = False
 
         par.jump_beta = 0.00
         par.rho_beta = 0.00
