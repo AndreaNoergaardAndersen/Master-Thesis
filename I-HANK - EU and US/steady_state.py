@@ -197,7 +197,7 @@ def evaluate_ss(model, do_print=False):
     par.varphi_us = w_us_ss * ss.C_us**(-par.sigma_us) / ((ss.N_us + ss.NNT_us)**par.nu_us)
 
     # ---- DK production: NT sector ----
-    ss.ZNT = 0.96
+    ss.ZNT =  368990.5 /  383844.7410
     ss.NNT = sNT
     ss.YNT = ss.ZNT * ss.NNT
     ss.WNT = ss.PNT * ss.ZNT     # = 1 in SS
@@ -208,7 +208,8 @@ def evaluate_ss(model, do_print=False):
     rho_dk = (par.eta_VA_dk - 1.0) / par.eta_VA_dk
 
     # ---- DK production: HH sector (high material, high US export share) ----
-    ss.ZTH_HH = 0.87
+    W_HH_hjaelp= 332967.7/ 383844.7410 #Wage index for HH
+    ss.ZTH_HH = ((1-par.beta_M_dk_h)*W_HH_hjaelp**(1-par.eta_VA_dk) + par.beta_M_dk_h)** (1.0 / (1.0 - par.eta_VA_dk))
     ss.NHH = par.sHH
     ss.PM_dk_h = blocks.price_index(ss.PM_dk_us, ss.PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us_h)
     # nominal wage from unit-cost inversion (PHH = ZTH_HH = PM_dk_h = 1 → WHH = 1)
@@ -223,7 +224,8 @@ def evaluate_ss(model, do_print=False):
 
     # ---- DK production: HL sector (high material, low US export share) ----
     # Same production technology as HH (same h-params), different export intensity
-    ss.ZTH_HL = 1.50
+    W_HL_hjaelp=  577104 / 383844.7410 #Wage index for HL
+    ss.ZTH_HL = ((1-par.beta_M_dk_h)*W_HL_hjaelp**(1-par.eta_VA_dk) + par.beta_M_dk_h)** (1.0 / (1.0 - par.eta_VA_dk))
     ss.NHL = par.sHL
     rhs_hx = ((ss.PHL * ss.ZTH_HL)**pow_dk - par.beta_M_dk_h * ss.PM_dk_h**pow_dk) / (1.0 - par.beta_M_dk_h)
     ss.WHL = rhs_hx ** (1.0 / pow_dk)
@@ -235,7 +237,8 @@ def evaluate_ss(model, do_print=False):
                         + par.beta_M_dk_h**(1.0/par.eta_VA_dk) * ss.M_dk_hx**rho_dk) ** (1.0 / rho_dk))
 
     # ---- DK production: LH sector (low material, high US export share) ----
-    ss.ZTH_LH = 1.41
+    W_LH_hjaelp=   542278.9 / 383844.7410 #Wage index for LH
+    ss.ZTH_LH = ((1-par.beta_M_dk_l)*W_LH_hjaelp**(1-par.eta_VA_dk) + par.beta_M_dk_l)** (1.0 / (1.0 - par.eta_VA_dk))
     ss.NLH = par.sLH
     ss.PM_dk_l = blocks.price_index(ss.PM_dk_us, ss.PM_dk_eu, par.eta_M_dk, par.alpha_M_dk_us_l)
     rhs_l = ((ss.PLH * ss.ZTH_LH)**pow_dk - par.beta_M_dk_l * ss.PM_dk_l**pow_dk) / (1.0 - par.beta_M_dk_l)
@@ -249,7 +252,8 @@ def evaluate_ss(model, do_print=False):
 
     # ---- DK production: LL sector (low material, low US export share) ----
     # Same production technology as LH (same l-params), different export intensity
-    ss.ZTH_LL = 1.12
+    W_LL_hjaelp=   428558 / 383844.7410 #Wage index for LL
+    ss.ZTH_LL = ((1-par.beta_M_dk_l)*W_LL_hjaelp**(1-par.eta_VA_dk) + par.beta_M_dk_l)** (1.0 / (1.0 - par.eta_VA_dk))
     ss.NLL = par.sLL
     rhs_lx = ((ss.PLL * ss.ZTH_LL)**pow_dk - par.beta_M_dk_l * ss.PM_dk_l**pow_dk) / (1.0 - par.beta_M_dk_l)
     ss.WLL = rhs_lx ** (1.0 / pow_dk)
