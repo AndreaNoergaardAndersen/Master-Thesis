@@ -90,16 +90,22 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # sNT = 1 - sHH - sHL - sLH - sLL (derived)
 
         # b. preferences
-        par.beta = 0.975 # 0.9843 #0.975 
-        par.sigma = 2.0 #1.5 #Forsøg med etaT # 2.0 # MPC for lav når 2.5  #intertemporal elasticity of substitution
+        # HtM calibration (folded into evaluate_ss)
+        par.HtM_target      = 0.15
+        par.HtM_threshold   = 0.05         # fraction of avg labor income for "loose" HtM
+        par.recalibrate_beta = False        # turn off to pin beta in sensitivity exercises
+        par.beta_low        = 0.93         # search bracket
+        par.beta_high       = 0.99
+        par.beta = 0.975 # Bliver sat automatisk til at match HtM target
+        par.sigma = 2.0 # 2.0 #1.5 #Forsøg med etaT # 2.0
 
         par.alphaT = np.nan
-        par.etaT = 2.0 #0.5 VIRKER IKKE
+        par.etaT = 2.0 #2.0 #0.5 VIRKER IKKE
 
         par.alphaF = 0.15 #1/3 VIRKER
         par.alpha_us = 0.20 #0.05 VIRKER
 
-        par.etaF = 1.5 #2.0 #VIRKER
+        par.etaF = 2.0 #2.0 #VIRKER
         par.etaF_us = 3.0 #VIRKER
 
         # Home-tradeable 4-sector CES weights (calibrated in SS, shared by all buyers)
@@ -125,14 +131,14 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.varphiLH = np.nan
         par.varphiLL = np.nan
         par.varphiNT = np.nan
-        par.nu = 1.0 # 2.0 #forsøg med etaT
+        par.nu = 1.0 # 1.0 # 2.0 #forsøg med etaT
 
         # c. income parameters
         par.rho_z = 0.95
         par.sigma_psi = 0.10 #0.13 VIRKER IKKE
 
         # d. price setting
-        par.kappa = 0.05 #VIRKER
+        par.kappa = 0.05 #0.05 # 0.10 #VIRKER
         par.muw = 1.2
 
         # Danish production — material parameters shared within H/L group
@@ -144,8 +150,8 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.eta_M_dk = 0.50 #VIRKER
 
         # e. foreign economy — sector-specific US export shares
-        par.share_X_us_H = 0.80   # HH and LH: high US export share #VIRKER - skal rettes
-        par.share_X_us_L = 0.07   # HL and LL: low US export share #VIRKER - skal rettes
+        par.share_X_us_H = 0.40   # HH and LH: high US export share #VIRKER
+        par.share_X_us_L = 0.02   # HL and LL: low US export share #VIRKER
         par.eta_s = par.etaF  #VIRKER
 
         # EU economy
@@ -198,7 +204,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
 
         # f. government
         par.tau_ss = 0.30
-        par.phi_B = 0.93
+        par.phi_B = 0.90
 
         # central bank
         par.float = False
@@ -248,16 +254,16 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.std_ZNT_us = 0.00
 
         # i. misc.
-        par.T = 300
+        par.T = 400
 
         par.max_iter_solve = 50_000
         par.max_iter_simulate = 50_000
         par.max_iter_broyden = 100
 
-        par.tol_ss = 1e-12
-        par.tol_solve = 1e-12
-        par.tol_simulate = 1e-12
-        par.tol_broyden = 1e-10
+        par.tol_ss = 1e-10
+        par.tol_solve = 1e-10
+        par.tol_simulate = 1e-10
+        par.tol_broyden = 1e-8
 
         par.py_hh = False
         par.py_blocks = False

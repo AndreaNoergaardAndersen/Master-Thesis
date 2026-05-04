@@ -279,8 +279,54 @@ def evaluate_ss(model, do_print=False):
     ss.inc_LL = (1.0 - ss.tau) * ss.wLL * ss.NLL
     ss.inc_NT = (1.0 - ss.tau) * ss.wNT * ss.NNT
 
-    model.solve_hh_ss(do_print=do_print)
-    model.simulate_hh_ss(do_print=do_print)
+# ====== NEW: calibrate beta to hit HtM target (strict definition) ======
+    if par.recalibrate_beta:
+
+        def HtM_residual(beta_try):
+            par.beta = beta_try
+            ss.beta  = beta_try   # household problem reads ss.beta via inputs_hh
+            model.solve_hh_ss(do_print=False)
+            model.simulate_hh_ss(do_print=False)
+            HtM_share = ss.D[:, :, 0].sum()   # mass at borrowing constraint
+            if do_print:
+                print(f'  beta = {beta_try:.5f}  ->  HtM = {HtM_share:.4f}'
+                      f'  (target {par.HtM_target:.4f})')
+            return HtM_share - par.HtM_target
+
+        # verify bracket
+        f_low  = HtM_residual(par.beta_low)
+        f_high = HtM_residual(par.beta_high)
+
+        if f_low * f_high > 0:
+            raise RuntimeError(
+                f'HtM bracket does not contain a root: '
+                f'f({par.beta_low:.3f})={f_low:+.4f}, '
+                f'f({par.beta_high:.3f})={f_high:+.4f}. '
+                f'Widen [par.beta_low, par.beta_high] or check HtM_target.'
+            )
+
+        beta_star = optimize.brentq(HtM_residual, par.beta_low, par.beta_high,
+                                     xtol=1e-5)
+        par.beta = beta_star
+        ss.beta  = beta_star
+
+        # final solve at calibrated beta (brentq's last call may not be at beta_star)
+        model.solve_hh_ss(do_print=False)
+        model.simulate_hh_ss(do_print=False)
+
+        if do_print:
+            print(f'  -> calibrated beta = {beta_star:.5f}')
+
+    else:
+        # use whatever par.beta is set to (e.g. for sensitivity exercises)
+        ss.beta = par.beta
+        model.solve_hh_ss(do_print=do_print)
+        model.simulate_hh_ss(do_print=do_print)
+    # ====== END NEW ======
+
+
+    #model.solve_hh_ss(do_print=do_print)
+    #model.simulate_hh_ss(do_print=do_print)
 
     # ---- Government ----
     ss.B = ss.A_hh
@@ -453,3 +499,4 @@ def find_ss(model, do_print=False):
         print(f'{par.omega_TH_LH_us = :.3f}')
         print(f'{par.omega_TH_LL_us = :.3f}')
         print(f'{ss.D[:, :, 0].sum() = :.3f}')
+        print(f'{par.beta = :.3f}')
