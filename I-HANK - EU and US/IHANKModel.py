@@ -100,7 +100,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.sigma = 2.5 # 2.0 #1.5 #Forsøg med etaT # 2.0
 
         par.alphaT = np.nan
-        par.etaT = 1.5 #2.0 #0.5 VIRKER IKKE
+        par.etaT = 0.5 #2.0 #0.5 VIRKER IKKE
 
         par.alphaF = 0.15 #1/3 VIRKER
         par.alpha_us = 0.20 #0.05 VIRKER

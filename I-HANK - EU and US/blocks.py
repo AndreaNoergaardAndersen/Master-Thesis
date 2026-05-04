@@ -9,6 +9,8 @@ from GEModelTools import lag, lead
 
 @nb.njit
 def price_index(P1,P2,eta,alpha):
+    if eta == 1.0:
+        return P1**alpha * P2**(1-alpha)
     return (alpha*P1**(1-eta)+(1-alpha)*P2**(1-eta))**(1/(1-eta))
 
 @nb.njit
