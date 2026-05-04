@@ -212,7 +212,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # central bank
         par.float = False
         par.phi = 1.5
-        par.psi_NFA = 0.01 #5e-2
+        par.psi_NFA = 0.001 #5e-2
 
         # g. grids
         par.a_min = 0.0
