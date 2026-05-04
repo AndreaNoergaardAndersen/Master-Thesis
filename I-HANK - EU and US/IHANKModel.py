@@ -97,10 +97,10 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.beta_low        = 0.93         # search bracket
         par.beta_high       = 0.99
         par.beta = 0.975 # Bliver sat automatisk til at match HtM target
-        par.sigma = 2.0 # 2.0 #1.5 #Forsøg med etaT # 2.0
+        par.sigma = 2.5 # 2.0 #1.5 #Forsøg med etaT # 2.0
 
         par.alphaT = np.nan
-        par.etaT = 2.0 #2.0 #0.5 VIRKER IKKE
+        par.etaT = 1.5 #2.0 #0.5 VIRKER IKKE
 
         par.alphaF = 0.15 #1/3 VIRKER
         par.alpha_us = 0.20 #0.05 VIRKER
@@ -113,7 +113,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.omega_TH_HL = np.nan
         par.omega_TH_LH = np.nan
         par.omega_TH_LL = np.nan  # stored explicitly for symmetry
-        par.eta_TH = 1.0 # 2.0 #VIRKER
+        par.eta_TH = 2.0 # 2.0 #VIRKER
 
         # Destination-specific sector CES weights (calibrated in SS from share_X_us_H/L)
         par.omega_TH_HH_eu = np.nan
@@ -138,12 +138,15 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.sigma_psi = 0.10 #0.13 VIRKER IKKE
 
         # d. price setting
-        par.kappa = 0.05 #0.05 # 0.10 #VIRKER
+        par.kappa = 0.1 #0.05 # 0.10 #VIRKER
         par.muw = 1.2
 
         # Danish production — material parameters shared within H/L group
-        par.beta_M_dk_h = 1/3       # material share, high-material sectors (HH, HL)
-        par.beta_M_dk_l = 1/3       # material share, low-material sectors  (LH, LL)
+        par.sM_dk_h_target=1/3
+        par.sM_dk_l_target=1/3
+
+        par.beta_M_dk_h = np.nan       # material share, high-material sectors (HH, HL)
+        par.beta_M_dk_l = np.nan       # material share, low-material sectors  (LH, LL)
         par.alpha_M_dk_us_h = 0.27  # US share in materials, high-material sectors
         par.alpha_M_dk_us_l = 0.17  # US share in materials, low-material sectors
         par.eta_VA_dk = 0.50 #VIRKER
@@ -209,7 +212,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # central bank
         par.float = False
         par.phi = 1.5
-        par.psi_NFA = 0.0 #5e-2
+        par.psi_NFA = 0.01 #5e-2
 
         # g. grids
         par.a_min = 0.0

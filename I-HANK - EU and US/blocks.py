@@ -331,7 +331,7 @@ def prices(par, ini, ss,
            PTH, PTH_eu_s, PTH_us_s,
            PT, P, Q, Q_us,
            wHH, wHL, wLH, wLL, wNT, tau_x, tau_m,
-           PF_us_s, PF_eu_s):
+           PF_us_s, PF_eu_s, PTH_eu_dom, PTH_us_dom):
     """
     Price indices and real exchange rates.
     PTH = single 4-sector CES aggregate (omega_TH weights), shared by all buyers.
@@ -351,8 +351,24 @@ def prices(par, ini, ss,
                            par.omega_TH_HH, par.omega_TH_HL, par.omega_TH_LH, par.omega_TH_LL)
 
     # in foreign currency (for Armington) — both use same PTH
-    PTH_eu_s[:] = PTH / E
-    PTH_us_s[:] = (1.0 + tau_x) * PTH / E_us
+    PTH_eu_dom[:] = price_index_4(
+        PHH, PHL, PLH, PLL, par.eta_TH,
+        par.omega_TH_HH_eu,
+        par.omega_TH_HL_eu,
+        par.omega_TH_LH_eu,
+        par.omega_TH_LL_eu
+    )
+
+    PTH_us_dom[:] = price_index_4(
+        PHH, PHL, PLH, PLL, par.eta_TH,
+        par.omega_TH_HH_us,
+        par.omega_TH_HL_us,
+        par.omega_TH_LH_us,
+        par.omega_TH_LL_us
+    )
+
+    PTH_eu_s[:] = PTH_eu_dom / E
+    PTH_us_s[:] = (1.0 + tau_x) * PTH_us_dom / E_us
 
     # c. foreign tradeable bundle (EU vs US)
     PF_TF[:] = price_index(PF_us, PF_eu, par.etaF_us, par.alpha_us)
@@ -508,7 +524,7 @@ def consumption(par, ini, ss,
                 CTH_eu_s, CTH_us_s,
                 CTH_HH_eu_s, CTH_HL_eu_s, CTH_LH_eu_s, CTH_LL_eu_s,
                 CTH_HH_us_s, CTH_HL_us_s, CTH_LH_us_s, CTH_LL_us_s,
-                CTF_us_res):
+                CTF_us_res, PTH_us_dom, PTH_eu_dom):
     """
     Consumption allocation with 4 home-tradeable sectors.
 
@@ -554,15 +570,15 @@ def consumption(par, ini, ss,
     # CTH_LH_us_s[:] = par.omega_TH_LH * (PLH / PTH)**(-par.eta_TH) * CTH_us_s
     # CTH_LL_us_s[:] = par.omega_TH_LL * (PLL / PTH)**(-par.eta_TH) * CTH_us_s
 
-    CTH_HH_eu_s[:] = par.omega_TH_HH_eu * (PHH / PTH)**(-par.eta_TH) * CTH_eu_s
-    CTH_HL_eu_s[:] = par.omega_TH_HL_eu * (PHL / PTH)**(-par.eta_TH) * CTH_eu_s
-    CTH_LH_eu_s[:] = par.omega_TH_LH_eu * (PLH / PTH)**(-par.eta_TH) * CTH_eu_s
-    CTH_LL_eu_s[:] = par.omega_TH_LL_eu * (PLL / PTH)**(-par.eta_TH) * CTH_eu_s
+    CTH_HH_eu_s[:] = par.omega_TH_HH_eu * (PHH / PTH_eu_dom)**(-par.eta_TH) * CTH_eu_s
+    CTH_HL_eu_s[:] = par.omega_TH_HL_eu * (PHL / PTH_eu_dom)**(-par.eta_TH) * CTH_eu_s
+    CTH_LH_eu_s[:] = par.omega_TH_LH_eu * (PLH / PTH_eu_dom)**(-par.eta_TH) * CTH_eu_s
+    CTH_LL_eu_s[:] = par.omega_TH_LL_eu * (PLL / PTH_eu_dom)**(-par.eta_TH) * CTH_eu_s
 
-    CTH_HH_us_s[:] = par.omega_TH_HH_us * (PHH / PTH)**(-par.eta_TH) * CTH_us_s
-    CTH_HL_us_s[:] = par.omega_TH_HL_us * (PHL / PTH)**(-par.eta_TH) * CTH_us_s
-    CTH_LH_us_s[:] = par.omega_TH_LH_us * (PLH / PTH)**(-par.eta_TH) * CTH_us_s
-    CTH_LL_us_s[:] = par.omega_TH_LL_us * (PLL / PTH)**(-par.eta_TH) * CTH_us_s
+    CTH_HH_us_s[:] = par.omega_TH_HH_us * (PHH / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
+    CTH_HL_us_s[:] = par.omega_TH_HL_us * (PHL / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
+    CTH_LH_us_s[:] = par.omega_TH_LH_us * (PLH / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
+    CTH_LL_us_s[:] = par.omega_TH_LL_us * (PLL / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
 
 @nb.njit
 def market_clearing(par, ini, ss,
