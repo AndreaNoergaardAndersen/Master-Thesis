@@ -248,16 +248,16 @@ def evaluate_ss(model, do_print=False):
     # calibrate CES beta parameters to hit target MATERIAL COST SHARES
     par.beta_M_dk_h = calibrate_beta_M_group(
         par.sM_dk_h_target,
-        [W_HH_hjaelp, W_HL_hjaelp],
-        [par.sHH, par.sHL],
+        [W_HH_hjaelp, W_HL_hjaelp, W_LH_hjaelp, W_LL_hjaelp],
+        [par.sHH, par.sHL, par.sLH, par.sLL],
         ss.PM_dk_h,
         par.eta_VA_dk
     )
 
     par.beta_M_dk_l = calibrate_beta_M_group(
         par.sM_dk_l_target,
-        [W_LH_hjaelp, W_LL_hjaelp],
-        [par.sLH, par.sLL],
+        [W_HH_hjaelp, W_HL_hjaelp, W_LH_hjaelp, W_LL_hjaelp],
+        [par.sHH, par.sHL, par.sLH, par.sLL],
         ss.PM_dk_l,
         par.eta_VA_dk
     )
