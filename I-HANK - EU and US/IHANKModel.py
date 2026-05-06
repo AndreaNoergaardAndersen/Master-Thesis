@@ -34,7 +34,8 @@ class IHANKModelClass(EconModelClass,GEModelClass):
                        'i_shock_eu', 'Z_eu', 'ZNT_eu',
                        'i_shock_us', 'Z_us', 'ZNT_us',
                        'tau_x',
-                       'tau_m']
+                       'tau_m',
+                       'etaF', 'eta_s']
 
         # Four tradeable sectors (HH, HL, LH, LL) + NT
         self.unknowns = ['CB','NNT','NHH','NHL','NLH','NLL',
@@ -105,7 +106,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.alphaF = 0.15 #1/3 VIRKER
         par.alpha_us = 0.20 #0.05 VIRKER
 
-        par.etaF = 1.5 #2.0 #VIRKER
+        par.etaF = 2.0 #2.0 #VIRKER
         par.etaF_us = 3.0 #VIRKER
 
         # Home-tradeable 4-sector CES weights (calibrated in SS, shared by all buyers)
@@ -255,6 +256,14 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.jump_ZNT_us = 0.00
         par.rho_ZNT_us = 0.00
         par.std_ZNT_us = 0.00
+
+        par.jump_etaF = 0.00
+        par.rho_etaF  = 0.00
+        par.std_etaF  = 0.00
+
+        par.jump_eta_s = 0.00
+        par.rho_eta_s  = 0.00
+        par.std_eta_s  = 0.00
 
         # i. misc.
         par.T = 300

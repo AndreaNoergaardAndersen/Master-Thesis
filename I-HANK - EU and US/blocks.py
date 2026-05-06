@@ -20,6 +20,28 @@ def price_index_4(P1,P2,P3,P4,eta,o1,o2,o3,o4):
     return (o1*P1**(1-eta)+o2*P2**(1-eta)+o3*P3**(1-eta)+o4*P4**(1-eta))**(1/(1-eta))
 
 @nb.njit
+def price_index_t(P1, P2, eta, alpha):
+    """ CES price index with a time-varying elasticity.
+        Robust to inputs of shape (T,) or (T,1): GEModelTools passes
+        2-D path slices during compute_jacs and 1-D paths at runtime. """
+    P1f  = P1.ravel()
+    P2f  = P2.ravel()
+    etaf = eta.ravel()
+    T_   = P1f.shape[0]
+    out  = np.empty(T_)
+    for t in range(T_):
+        e    = etaf[t]
+        diff = e - 1.0
+        if diff < 0.0:
+            diff = -diff
+        if diff < 1e-10:
+            out[t] = P1f[t]**alpha * P2f[t]**(1.0 - alpha)
+        else:
+            out[t] = (alpha*P1f[t]**(1.0 - e)
+                      + (1.0 - alpha)*P2f[t]**(1.0 - e))**(1.0/(1.0 - e))
+    return out.reshape(P1.shape)
+
+@nb.njit
 def inflation_from_price(P,inival):
 
     P_lag = lag(inival,P)
@@ -35,6 +57,7 @@ def price_from_inflation(P,pi,T,iniP):
             P[t] = iniP*(1+pi[t])
         else:
             P[t] = P[t-1]*(1+pi[t])
+
 
 ############
 ## Blocks ##
@@ -333,7 +356,7 @@ def prices(par, ini, ss,
            PTH, PTH_eu_s, PTH_us_s,
            PT, P, Q, Q_us,
            wHH, wHL, wLH, wLL, wNT, tau_x, tau_m,
-           PF_us_s, PF_eu_s, PTH_eu_dom, PTH_us_dom):
+           PF_us_s, PF_eu_s, PTH_eu_dom, PTH_us_dom, etaF):
     """
     Price indices and real exchange rates.
     PTH = single 4-sector CES aggregate (omega_TH weights), shared by all buyers.
@@ -376,7 +399,7 @@ def prices(par, ini, ss,
     PF_TF[:] = price_index(PF_us, PF_eu, par.etaF_us, par.alpha_us)
 
     # d. tradeable and CPI indices
-    PT[:] = price_index(PF_TF, PTH, par.etaF, par.alphaF)
+    PT[:] = price_index_t(PF_TF, PTH, etaF, par.alphaF)
     P[:]  = price_index(PT,    PNT,  par.etaT,  par.alphaT)
 
     # e. real exchange rates
@@ -506,7 +529,8 @@ def consumption(par, ini, ss,
                 CTH_eu_s, CTH_us_s,
                 CTH_HH_eu_s, CTH_HL_eu_s, CTH_LH_eu_s, CTH_LL_eu_s,
                 CTH_HH_us_s, CTH_HL_us_s, CTH_LH_us_s, CTH_LL_us_s,
-                CTF_us_res, PTH_us_dom, PTH_eu_dom):
+                CTF_us_res, PTH_us_dom, PTH_eu_dom,
+                etaF, eta_s):
     """
     Consumption allocation with 4 home-tradeable sectors.
 
@@ -523,8 +547,8 @@ def consumption(par, ini, ss,
     CNT[:] = (1-par.alphaT) * (PNT / P)**(-par.etaT) * C_hh
 
     # b. home bundle vs foreign bundle
-    CTF[:] = par.alphaF      * (PF_TF / PT)**(-par.etaF) * CT
-    CTH[:] = (1-par.alphaF)  * (PTH   / PT)**(-par.etaF) * CT
+    CTF[:] = par.alphaF      * (PF_TF / PT)**(- etaF) * CT
+    CTH[:] = (1-par.alphaF)  * (PTH   / PT)**(- etaF) * CT
 
     # c. 4-sector split — same omega_TH weights for domestic and foreign buyers
     CTH_HH[:] = par.omega_TH_HH * (PHH / PTH)**(-par.eta_TH) * CTH
@@ -538,8 +562,8 @@ def consumption(par, ini, ss,
 
     # e. total export demand from EU and US (Armington on aggregate PTH)
     #    tau_x already embedded in PTH_us_s (prices block)
-    CTH_eu_s[:] = (PTH_eu_s / PF_eu_s)**(-par.eta_s) * M_eu_s
-    CTH_us_s[:] = (PTH_us_s / PF_us_s)**(-par.eta_s) * M_us_s
+    CTH_eu_s[:] = (PTH_eu_s / PF_eu_s)**(- eta_s) * M_eu_s
+    CTH_us_s[:] = (PTH_us_s / PF_us_s)**(- eta_s) * M_us_s
 
     # f. sector-level export allocation — destination-specific omega_TH weights
     # (old version used same omega_TH weights for EU and US, neutralising H/L exposure)

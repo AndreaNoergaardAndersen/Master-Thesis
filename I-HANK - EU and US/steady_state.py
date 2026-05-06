@@ -75,6 +75,9 @@ def evaluate_ss(model, do_print=False):
 
     ss.beta = par.beta
 
+    ss.etaF = par.etaF
+    ss.eta_s = par.eta_s
+
     # EU NK steady state
     ss.C_eu = 1.0
     ss.N_eu = 1.0
@@ -122,6 +125,7 @@ def evaluate_ss(model, do_print=False):
                     'PM_us_us', 'PM_us_eu', 'PM_us', 'M_us', 'M_us_eu', 'M_us_us',
                     # DK shared material price components (PM_dk_h, PM_dk_l = 1 when both = 1)
                     'PM_dk_eu', 'PM_dk_us', 'PM_dk_h', 'PM_dk_l',
+                    'PTH_us_dom', 'PTH_eu_dom',
                     ]:
         ss.__dict__[varname] = 1.0
 
