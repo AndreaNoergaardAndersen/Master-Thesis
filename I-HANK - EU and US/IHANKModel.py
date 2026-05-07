@@ -7,215 +7,278 @@ import steady_state
 import blocks
 
 class IHANKModelClass(EconModelClass,GEModelClass):
-    
+
     #########
     # setup #
-    #########      
+    #########
 
     def settings(self):
         """ fundamental settings """
 
         # a. namespaces
         self.namespaces = ['par','ss','ini','path','sim']
-        
+
         # b. household
-        self.grids_hh = ['a'] # grids
-        self.pols_hh = ['a'] # policy functions
-        self.inputs_hh = ['beta','ra','inc_TH','inc_NT'] # direct inputs # add more sectors here
-        self.inputs_hh_z = [] # transition matrix inputs
-        self.outputs_hh = ['a','c','uc_TH','uc_NT','c_TH','c_NT'] # outputs # add more sectors here
-        self.intertemps_hh = ['vbeg_a'] # intertemporal variables
+        self.grids_hh = ['a']
+        self.pols_hh = ['a']
+        self.inputs_hh = ['beta','ra','inc_HH','inc_HL','inc_LH','inc_LL','inc_NT']
+        self.inputs_hh_z = []
+        self.outputs_hh = ['a','c','uc_HH','uc_HL','uc_LH','uc_LL','uc_NT',
+                           'c_HH','c_HL','c_LH','c_LL','c_NT']
+        self.intertemps_hh = ['vbeg_a']
 
         # c. GE
-        self.shocks = ['ZTH','ZNT', #domestic TFPs
-                       'beta','G', #Domestic preference and fiscal shocks
-                       'i_shock', #domestic monetary shock (keep at zero under peg)
-                       'i_shock_eu', 'Z_eu', 'piM_eu_eu', # EU natural-rate, monetary shocks and foreign TFP
-                       'i_shock_us', 'Z_us', 'piM_us_us', # US natural-rate, monetary shocks and foreign TFP
-                       'tau_x',  # US initial tariff on DK+EA exports (raises price of DK/EA goods in US market)
-                       'tau_m']  # DK+EA retaliatory tariff on US-origin materials (EU sets external trade policy for DK)
-        self.unknowns = ['CB','NNT','NTH','piWTH','piWNT', 'CB_us', #original # endogenous inputs
-                         'C_eu', 'N_eu', 'pi_eu', 'i_eu', 'mc_eu', #EU
-                         'C_us', 'N_us', 'pi_us', 'i_us', 'mc_us'] #US 
-        self.targets = ['NKWCT_res','NKWCNT_res','clearing_YTH','clearing_YNT',  # domestic wage NKPCs + market clearing #targets
-                        'eu_Euler_res', 'eu_NKPC_res', 'eu_TR_res', 'eu_LS_res', 'eu_RC_res', 'UIP_res', #EU NK residuals + peg conditions
-                        'us_Euler_res', 'us_NKPC_res', 'us_TR_res', 'us_LS_res', 'us_RC_res', 'UIP_res_us'] #US NK residuals
-        
-        # d. all variables
+        self.shocks = ['ZTH_HH', 'ZTH_HL', 'ZTH_LH', 'ZTH_LL', 'ZNT',
+                       'beta','G',
+                       'i_shock',
+                       'i_shock_eu', 'Z_eu', 'ZNT_eu',
+                       'i_shock_us', 'Z_us', 'ZNT_us',
+                       'tau_x',
+                       'tau_m',
+                       'etaF', 'eta_s']
+
+        # Four tradeable sectors (HH, HL, LH, LL) + NT
+        self.unknowns = ['CB','NNT','NHH','NHL','NLH','NLL',
+                         'piWHH','piWHL','piWLH','piWLL','piWNT', 'CB_us',
+                         'C_eu', 'N_eu', 'NNT_eu', 'pi_T_eu', 'pi_NT_eu', 'i_eu', 'mc_eu',
+                         'C_us', 'N_us', 'NNT_us', 'pi_T_us', 'pi_NT_us', 'i_us', 'mc_us',
+                         'CTF_us']
+
+        self.targets = ['NKWCHH_res','NKWCHL_res','NKWCLH_res','NKWCLL_res','NKWCNT_res',
+                        'clearing_YHH','clearing_YHL','clearing_YLH','clearing_YLL','clearing_YNT',
+                        'eu_Euler_res','eu_NKPC_res','eu_NKPC_NT_res','eu_TR_res','eu_LS_res','eu_RC_res','eu_NT_res','UIP_res',
+                        'us_Euler_res','us_NKPC_res','us_NKPC_NT_res','us_TR_res','us_LS_res','us_RC_res','us_NT_res','UIP_res_us',
+                        'CTF_us_res']
+
+        # d. block sequence
         self.blocks = [
-            'blocks.mon_pol', # sets the exchange rates first
-            'blocks.material_prices', # sets the foreign prices (PF_eu and PF_us)
-            'blocks.eu_nk', # closed-economy EU NK block (triangular, no SOE feedback)
-            'blocks.us_nk', # closed-economy US NK block (triangular, no SOE feedback)
-            #'blocks.mon_pol_us',# sets the  E_us (float)
-            'blocks.production', # add more sectors here
-            'blocks.prices', # add more price indexes here
-            'blocks.inflation', # add more inflation rates here
+            'blocks.mon_pol',
+            'blocks.material_prices',
+            'blocks.eu_nk',
+            'blocks.us_nk',
+            'blocks.production',
+            'blocks.prices',
+            'blocks.inflation',
             'blocks.central_bank',
             'blocks.government',
-            'hh', # add more sectors here
+            'hh',
             'blocks.NKWCs',
             'blocks.UIP',
-            'blocks.consumption', # add more goods here; choice after T / NT
-            'blocks.market_clearing', # add more sectors here            
-            'blocks.accounting',            
-        ]        
+            'blocks.consumption',
+            'blocks.market_clearing',
+            'blocks.accounting',
+        ]
 
         # e. functions
         self.solve_hh_backwards = household_problem.solve_hh_backwards
-        
+
     def setup(self):
-        """ set baseline parameters """ # calibrate to match Danish economy
+        """ set baseline parameters """
 
         par = self.par
 
         # a. discrete states
-        par.Nfix = 2 # number of sectors # change to 5
-        par.Nz = 7 # idiosyncratic productivity
-        par.sT = 0.25 # share of workers in tradeable sector - change!
+        par.Nfix = 5  # HH(0), HL(1), LH(2), LL(3), NT(4)
+        par.Nz = 5
+
+        # Employment shares
+        # High-material sectors (HH+HL): total 38%, split evenly
+        par.sHH = 0.37 #0.19  # high material, high US export share
+        par.sHL = 0.01 #0.19  # high material, low US export share
+        # Low-material sectors (LH+LL): total 19%, split evenly
+        par.sLH = 0.13 #0.095 # low material, high US export share
+        par.sLL = 0.06 #0.095 # low material, low US export share
+        # sNT = 1 - sHH - sHL - sLH - sLL (derived)
 
         # b. preferences
-        par.beta = 0.975 # discount factor
-        par.sigma = 2.0 # inverse of intertemporal elasticity of substitution
+        # HtM calibration (folded into evaluate_ss)
+        par.HtM_target      = 0.15
+        par.HtM_threshold   = 0.05         # fraction of avg labor income for "loose" HtM
+        par.recalibrate_beta = True        # turn off to pin beta in sensitivity exercises
+        par.beta_low        = 0.93         # search bracket
+        par.beta_high       = 0.99
+        par.beta = 0.975 # Bliver sat automatisk til at match HtM target
+        par.sigma = 1.5 # 2.0 #1.5 #Forsøg med etaT # 2.0
 
-        par.alphaT = np.nan # share of tradeable goods in home consumption (determined in ss)
-        par.etaT = 2.0 # elasticity of substitution between tradeable and non-tradeable goods
-        
-        par.alphaF = 1/3 # share of foreign goods in home tradeable consumption
-        par.alpha_us = 0.5 # share of US goods in home tradeable consumption
+        par.alphaT = np.nan
+        par.etaT = 0.5 #2.0 #0.5 VIRKER IKKE
 
-        par.etaF = 2.0 # elasticity of substitution between home and foreign tradeable goods
-        par.etaF_us = 2.0 # elasticity of substitution between US and EU tradeable goods
-          
-        par.varphiTH = np.nan # disutility of labor in tradeable sector (determined in s)
-        par.varphiNT = np.nan # disutility of labor in non-tradeable sector (determined in s)
-        par.nu = 1.0 # Frisch elasticity of labor supply
-              
+        par.alphaF = 0.15 #1/3 VIRKER
+        par.alpha_us = 0.20 #0.05 VIRKER
+
+        par.etaF = 2.0 #2.0 #VIRKER
+        par.etaF_us = 3.0 #VIRKER
+
+        # Home-tradeable 4-sector CES weights (calibrated in SS, shared by all buyers)
+        par.omega_TH_HH = np.nan
+        par.omega_TH_HL = np.nan
+        par.omega_TH_LH = np.nan
+        par.omega_TH_LL = np.nan  # stored explicitly for symmetry
+        par.eta_TH = 1.0 # 2.0 #VIRKER
+
+        # Destination-specific sector CES weights (calibrated in SS from share_X_us_H/L)
+        par.omega_TH_HH_eu = np.nan
+        par.omega_TH_HL_eu = np.nan
+        par.omega_TH_LH_eu = np.nan
+        par.omega_TH_LL_eu = np.nan
+        par.omega_TH_HH_us = np.nan
+        par.omega_TH_HL_us = np.nan
+        par.omega_TH_LH_us = np.nan
+        par.omega_TH_LL_us = np.nan
+
+        # Labor disutility (calibrated in SS)
+        par.varphiHH = np.nan
+        par.varphiHL = np.nan
+        par.varphiLH = np.nan
+        par.varphiLL = np.nan
+        par.varphiNT = np.nan
+        par.nu = 2.0 # 1.0 # 2.0 #forsøg med etaT
+
         # c. income parameters
-        par.rho_z = 0.95 # AR(1) parameter
-        par.sigma_psi = 0.10 # std. of psi
-        
+        par.rho_z = 0.95
+        par.sigma_psi = 0.10 #0.13 VIRKER IKKE
+
         # d. price setting
-        par.kappa = 0.1 # slope of wage Phillips curve
-        par.muw = 1.2 # wage mark-up
+        par.kappa = 0.05 #0.05 # 0.10 #VIRKER
+        par.muw = 1.2
 
-        #DK production
-        par.beta_M_dk = 0.10        # material share in outer CES (labor vs. materials)
-        par.eta_VA_dk = 1.50        # elasticity in outer CES
-        par.alpha_M_dk_us = 0.10    # US share in EU materials bundle
-        par.eta_M_dk = 1.50         # elasticity EU vs US materials in inner CES       
- 
-        # e. foreign Economy
-        
-        par.share_X_us = 0.5 # share of DK exports goint to US in SS
-        par.eta_s = 2.0 # Armington elasticity of foreign demand
-        # e1) EU economy
-        par.i_eu_ss = 0.005           #zero inflation in SS
-        par.beta_eu = 1.0/(1.0+par.i_eu_ss)     # can be set separately  
-        par.sigma_eu = par.sigma    # inverse of intertemporal elasticity of substitution
-        par.nu_eu= par.nu           # Frisch elasticity of labor supply
-        par.varphi_eu = np.nan      # disutility of labor (determined in ss)
+        # Danish production — material parameters shared within H/L group
+        par.sM_dk_h_target=1/3
+        par.sM_dk_l_target=1/3
 
-        par.kappa_eu = 0.05         # NKPC slope
-        par.phi_pi_eu = 1.5         # Taylor rule on inflation
-        
-        par.W_eu_ss=1.0             #EU nominal wage in EUR (numeraire)
-        par.Y_eu_ss=1.0             #EU outputlevel normalization for reporting
-        par.chi_M_eu=1.0            #sensitivity of EU market size to EU activity 
+        par.beta_M_dk_h = np.nan       # material share, high-material sectors (HH, HL)
+        par.beta_M_dk_l = np.nan       # material share, low-material sectors  (LH, LL)
+        par.alpha_M_dk_us_h = 0.27  # US share in materials, high-material sectors
+        par.alpha_M_dk_us_l = 0.17  # US share in materials, low-material sectors
+        par.eta_VA_dk = 0.50 #VIRKER
+        par.eta_M_dk = 0.50 #VIRKER
 
-        # EU materials in production
-        par.beta_M_eu = 0.10        # material share in outer CES (labor vs. materials)
-        par.eta_VA_eu = 1.50        # elasticity in outer CES
-        par.alpha_M_eu_us = 0.10    # US share in EU materials bundle
-        par.eta_M_eu = 1.50         # elasticity EU vs US materials in inner CES
+        # e. foreign economy — sector-specific US export shares
+        par.share_X_us_H = 0.40   # HH and LH: high US export share #VIRKER
+        par.share_X_us_L = 0.02   # HL and LL: low US export share #VIRKER
+        par.eta_s = par.etaF  #VIRKER
 
-        #EU demand for SOE exports (armington)
-        par.M_eu_s_ss = np.nan # size of foreign market (determined in ss)
+        # EU economy
+        par.i_eu_ss = 0.005
+        par.beta_eu = 1.0/(1.0+par.i_eu_ss)
+        par.sigma_eu = par.sigma
+        par.nu_eu = par.nu
+        par.varphi_eu = np.nan
 
-         # e2) US economy
-        par.i_us_ss=0.005           #zero inflation in SS
-        par.beta_us = 1.0/(1.0+par.i_us_ss)     # can be set separately  
-        par.sigma_us = par.sigma    # inverse of intertemporal elasticity of substitution
-        par.nu_us= par.nu           # Frisch elasticity of labor supply
-        par.varphi_us = np.nan      # disutility of labor (determined in ss)
+        par.kappa_eu = 0.05
+        par.phi_pi_eu = 1.5 #VIRKER
 
-        par.kappa_us = 0.05         # NKPC slope
-        par.phi_pi_us = 1.5         # Taylor rule on inflation
-        
-        par.W_us_ss=1.0             #US nominal wage in USD (numeraire)
-        par.Y_us_ss=1.0             #US outputlevel normalization for reporting
-        par.chi_M_us=1.0            #sensitivity of US market size to US activity
+        par.W_eu_ss = 1.0
+        par.Y_eu_ss = 1.0
 
-        # US materials in production
-        par.beta_M_us = 0.10        # material share in outer CES (labor vs. materials)
-        par.eta_VA_us = 1.50        # elasticity in outer CES
-        par.alpha_M_us_us = 0.10    # US share in US materials bundle
-        par.eta_M_us = 1.50         # elasticity US vs EU materials in inner CES 
+        par.beta_M_eu = 0.72  # 1/3 VIRKER
+        par.eta_VA_eu = par.eta_VA_dk #VIRKER
+        par.alpha_M_eu_us = 0.03 #VIRKER
+        par.eta_M_eu = par.eta_M_dk #VIRKER
 
-        #US demand for SOE exports (armington)
-        par.M_us_s_ss = np.nan # size of foreign market (determined in ss)
+        par.M_eu_s_ss = np.nan
+
+        # EU non-tradable sector
+        par.alphaT_eu = 0.70   # tradable share in EU consumption (free parameter)
+        par.etaT_eu  = 0.50 #VIRKER #    # T vs NT substitution elasticity in EU
+
+        # US economy
+        par.i_us_ss = 0.005
+        par.beta_us = 1.0/(1.0+par.i_us_ss)
+        par.sigma_us = par.sigma
+        par.nu_us = par.nu
+        par.varphi_us = np.nan
+
+        par.kappa_us = 0.05
+        par.phi_pi_us = 1.5 #VIRKER
+
+        par.W_us_ss = 1.0
+        par.Y_us_ss = 1.0
+
+        par.beta_M_us = 0.74 # par.beta_M_eu #VIRKER
+        par.eta_VA_us = par.eta_VA_dk #VIRKER
+        par.alpha_M_us_us = 0.97 #VIRKER
+        par.eta_M_us = par.eta_M_dk #VIRKER
+
+        par.M_us_s_ss = np.nan
+
+        # US non-tradable sector (mirrors EU)
+        par.alphaT_us = 0.70   # tradable share in US consumption
+        par.etaT_us   = 0.50 #VIRKER #   # T vs NT substitution elasticity in US
 
         # f. government
-        par.tau_ss = 0.30 # tax rate on labor income
-        par.omega = 0.10 # tax sensitivity to debt
+        par.tau_ss = 0.30
+        par.phi_B = 0.93
 
         # central bank
-        par.float = True # float or fix exchange rate
-        par.phi = 1.5 # Taylor rule coefficient on inflation (only if float)
+        par.float = False
+        par.phi = 1.5
+        par.psi_NFA = 0.0 #5e-2
 
-        # g. grids         
-        par.a_min = 0.0 # maximum point in grid for a
-        par.a_max = 50.0 # maximum point in grid for a
-        par.Na = 500 # number of grid points #SÆT TIL 500 IGEN
+        # g. grids
+        par.a_min = 0.0
+        par.a_max = 50.0
+        par.Na = 300
 
         # h. shocks
-        # Tariff parameters
-        
-        par.jump_tau_m = 0.0     # Jump size for tau_m shock
-        par.rho_tau_m = 0.00     # Persistence of tau_m
-        par.std_tau_m = 0.00    # std.
-        
-        par.jump_tau_x = 0.0     # Jump size for tau_m shock
-        par.rho_tau_x = 0.00     # Persistence of tau_m
-        par.std_tau_x = 0.00    # std.
-        par.tariff_rev_lumpsum = False  # Revenue allocation mode
+        par.jump_tau_m = 0.0
+        par.rho_tau_m = 0.00
+        par.std_tau_m = 0.00
 
-        par.jump_beta = 0.00 # initial jump
-        par.rho_beta = 0.00 # AR(1) coefficeint
-        par.std_beta = 0.00 # std.
+        par.jump_tau_x = 0.0
+        par.rho_tau_x = 0.00
+        par.std_tau_x = 0.00
 
-        par.jump_G = 0.00 # initial jump
-        par.rho_G = 0.00 # AR(1) coefficeint
-        par.std_G = 0.00 # std.
+        par.jump_beta = 0.00
+        par.rho_beta = 0.00
+        par.std_beta = 0.00
 
-        par.jump_i_shock = 0.00 # initial jump
-        par.rho_i_shock = 0.00 # AR(1) coefficeint
-        par.std_i_shock = 0.00 # std.
+        par.jump_G = 0.00
+        par.rho_G = 0.00
+        par.std_G = 0.00
 
-        # EU shocks
+        par.jump_i_shock = 0.00
+        par.rho_i_shock = 0.00
+        par.std_i_shock = 0.00
+
         par.jump_i_shock_eu = 0.00
         par.rho_i_shock_eu = 0.00
         par.std_i_shock_eu = 0.00
 
-        # US shocks
+        par.jump_ZNT_eu = 0.00
+        par.rho_ZNT_eu = 0.00
+        par.std_ZNT_eu = 0.00
+
         par.jump_i_shock_us = 0.00
         par.rho_i_shock_us = 0.00
         par.std_i_shock_us = 0.00
 
-        # i. misc.
-        par.T = 500 # length of path        
-        
-        par.max_iter_solve = 50_000 # maximum number of iterations when solving
-        par.max_iter_simulate = 50_000 # maximum number of iterations when simulating
-        par.max_iter_broyden = 100 # maximum number of iteration when solving eq. system
-        
-        par.tol_ss = 1e-12 # tolerance when finding steady state - set to -12 again
-        par.tol_solve = 1e-12 # tolerance when solving
-        par.tol_simulate = 1e-12 # tolerance when simulating
-        par.tol_broyden = 1e-10 # tolerance when solving eq. system set to -10 again
+        par.jump_ZNT_us = 0.00
+        par.rho_ZNT_us = 0.00
+        par.std_ZNT_us = 0.00
 
-        par.py_hh = False # use python in household problem
-        par.py_blocks = False # use python in blocks
+        par.jump_etaF = 0.00
+        par.rho_etaF  = 0.00
+        par.std_etaF  = 0.00
+
+        par.jump_eta_s = 0.00
+        par.rho_eta_s  = 0.00
+        par.std_eta_s  = 0.00
+
+        # i. misc.
+        par.T = 300
+
+        par.max_iter_solve = 50_000
+        par.max_iter_simulate = 50_000
+        par.max_iter_broyden = 100
+
+        par.tol_ss = 1e-12
+        par.tol_solve = 1e-12
+        par.tol_simulate = 1e-12
+        par.tol_broyden = 1e-10
+
+        par.py_hh = False
+        par.py_blocks = False
 
     def allocate(self):
         """ allocate model """
@@ -224,4 +287,4 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         self.allocate_GE()
 
     prepare_hh_ss = steady_state.prepare_hh_ss
-    find_ss = steady_state.find_ss        
+    find_ss = steady_state.find_ss
