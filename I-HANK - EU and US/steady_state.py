@@ -1,4 +1,6 @@
+from pyexpat import model
 import time
+from xml.parsers.expat import model
 import numpy as np
 from scipy import optimize
 from sympy import beta
@@ -44,7 +46,45 @@ def prepare_hh_ss(model):
     ################################################
     # 3. initial guess for intertemporal variables #
     ################################################
+    
+    NHH_ss = ss.NHH; NHL_ss = ss.NHL; NLH_ss = ss.NLH
+    NLL_ss = ss.NLL; NNT_ss = ss.NNT
 
+    h_arr   = np.array([NHH_ss/par.sHH, NHL_ss/par.sHL, NLH_ss/par.sLH,
+                        NLL_ss/par.sLL, NNT_ss/sNT])
+    phi_arr = np.array([par.varphiHH, par.varphiHL, par.varphiLH,
+                        par.varphiLL, par.varphiNT])
+
+    inc_arr = np.array([ss.inc_HH/par.sHH, ss.inc_HL/par.sHL,
+                        ss.inc_LH/par.sLH, ss.inc_LL/par.sLL,
+                        ss.inc_NT/sNT])
+
+    v_a = np.zeros((par.Nfix, par.Nz, par.Na))
+
+    for i_fix in range(par.Nfix):
+        for i_z in range(par.Nz):
+
+            z = par.z_grid[i_z]
+            inc = inc_arr[i_fix] * z
+
+            c_guess = (1 + ss.ra) * par.a_grid + inc
+            u_guess = c_guess**(1.0 - par.sigma) / (1.0 - par.sigma)
+
+            # --- marginal value (existing object) ---
+            v_a[i_fix, i_z, :] = c_guess**(-par.sigma)
+
+            # --- lifetime value initial guesses ---
+            psi_sec_j = phi_arr[i_fix]   * h_arr[i_fix]**(1+par.nu) / (1+par.nu)
+            psi_avg_j = par.varphi_avg   * h_arr[i_fix]**(1+par.nu) / (1+par.nu)
+
+            ss.vbeg_nodis[i_fix, i_z, :] =  u_guess               / (1.0 - par.beta)
+            ss.vbeg_sec[i_fix,   i_z, :] = (u_guess - psi_sec_j) / (1.0 - par.beta)
+            ss.vbeg_avg[i_fix,   i_z, :] = (u_guess - psi_avg_j) / (1.0 - par.beta)
+
+        ss.vbeg_a[i_fix] = ss.z_trans[i_fix] @ v_a[i_fix]
+
+
+"""
     v_a = np.zeros((par.Nfix, par.Nz, par.Na))
 
     for i_fix in range(par.Nfix):
@@ -63,7 +103,7 @@ def prepare_hh_ss(model):
             c = (1+ss.ra) * par.a_grid + inc
             v_a[i_fix,i_z,:] = c**(-par.sigma)
         ss.vbeg_a[i_fix] = ss.z_trans[i_fix] @ v_a[i_fix]
-
+"""
 
 def evaluate_ss(model, do_print=False):
     """ evaluate steady state """
@@ -497,6 +537,14 @@ def evaluate_ss(model, do_print=False):
     par.varphiLH = (1.0/par.muw) * (1.0-ss.tau) * ss.wLH * ss.UC_LH_hh / ((ss.NLH/par.sLH)**par.nu)
     par.varphiLL = (1.0/par.muw) * (1.0-ss.tau) * ss.wLL * ss.UC_LL_hh / ((ss.NLL/par.sLL)**par.nu)
     par.varphiNT = (1.0/par.muw) * (1.0-ss.tau) * ss.wNT * ss.UC_NT_hh / ((ss.NNT/sNT)**par.nu)
+
+    sNT = 1.0 - par.sHH - par.sHL - par.sLH - par.sLL
+    par.varphi_avg = (par.sHH*par.varphiHH + par.sHL*par.varphiHL +
+                  par.sLH*par.varphiLH + par.sLL*par.varphiLL +
+                  sNT*par.varphiNT)
+    
+    model.solve_hh_ss(do_print=False)
+    model.simulate_hh_ss(do_print=False)
 
     ss.NKWCHH_res = 0.0
     ss.NKWCHL_res = 0.0

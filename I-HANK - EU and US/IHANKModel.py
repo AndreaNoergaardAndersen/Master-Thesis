@@ -21,11 +21,22 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         # b. household
         self.grids_hh = ['a']
         self.pols_hh = ['a']
-        self.inputs_hh = ['beta','ra','inc_HH','inc_HL','inc_LH','inc_LL','inc_NT']
+        self.inputs_hh = ['beta', 'ra',
+                  'inc_HH','inc_HL','inc_LH','inc_LL','inc_NT',
+                  'NHH','NHL','NLH','NLL','NNT']
         self.inputs_hh_z = []
-        self.outputs_hh = ['a','c','uc_HH','uc_HL','uc_LH','uc_LL','uc_NT',
-                           'c_HH','c_HL','c_LH','c_LL','c_NT']
-        self.intertemps_hh = ['vbeg_a']
+        self.outputs_hh = ['a','c',
+                   'uc_HH','uc_HL','uc_LH','uc_LL','uc_NT',
+                   'c_HH','c_HL','c_LH','c_LL','c_NT',
+                   'u', #flow utility from consumption
+                   'v_nodis', #lifetime valueo of consumption only (no disutility from labor)
+                   'v_sec', #lifetime value of consumption and sector-specific labor disutility
+                   'v_avg', #lifetime value of consumption and average labor disutility
+                   'ce_nodis', #Consumption equivalent welfare, consumption only (v_nodis)
+                   'ce_sec',   #Consumption equivalent welfare, sector-specific labor disutility (v_sec)
+                   'ce_avg' # Consumption equivalent welfare, average labor disutility (v_avg)
+                   ]
+        self.intertemps_hh = ['vbeg_a','vbeg_nodis','vbeg_sec','vbeg_avg']
 
         # c. GE
         self.shocks = ['ZTH_HH', 'ZTH_HL', 'ZTH_LH', 'ZTH_LL', 'ZNT',
@@ -127,11 +138,12 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.omega_TH_LL_us = np.nan
 
         # Labor disutility (calibrated in SS)
-        par.varphiHH = np.nan
-        par.varphiHL = np.nan
-        par.varphiLH = np.nan
-        par.varphiLL = np.nan
-        par.varphiNT = np.nan
+        par.varphiHH = 1.0
+        par.varphiHL = 1.0
+        par.varphiLH = 1.0
+        par.varphiLL = 1.0
+        par.varphiNT = 1.0
+        par.varphi_avg = 1.0
         par.nu = 2.0 # 1.0 # 2.0 #forsøg med etaT
 
         # c. income parameters
