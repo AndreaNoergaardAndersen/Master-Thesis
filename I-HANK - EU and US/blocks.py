@@ -19,26 +19,42 @@ def price_index_4(P1,P2,P3,P4,eta,o1,o2,o3,o4):
         return P1**o1 * P2**o2 * P3**o3 * P4**o4
     return (o1*P1**(1-eta)+o2*P2**(1-eta)+o3*P3**(1-eta)+o4*P4**(1-eta))**(1/(1-eta))
 
+#@nb.njit
+#def price_index_t(P1, P2, eta, alpha):
+    # """ CES price index with a time-varying elasticity.
+    #     Robust to inputs of shape (T,) or (T,1): GEModelTools passes
+    #     2-D path slices during compute_jacs and 1-D paths at runtime. """
+    # P1f  = P1.ravel()
+    # P2f  = P2.ravel()
+    # etaf = eta.ravel()
+    # T_   = P1f.shape[0]
+    # out  = np.empty(T_)
+    # for t in range(T_):
+    #     e    = etaf[t]
+    #     diff = e - 1.0
+    #     if diff < 0.0:
+    #         diff = -diff
+    #     if diff < 1e-10:
+    #         out[t] = P1f[t]**alpha * P2f[t]**(1.0 - alpha)
+    #     else:
+    #         out[t] = (alpha*P1f[t]**(1.0 - e)
+    #                   + (1.0 - alpha)*P2f[t]**(1.0 - e))**(1.0/(1.0 - e))
+    # return out.reshape(P1.shape)
+
 @nb.njit
 def price_index_t(P1, P2, eta, alpha):
-    """ CES price index with a time-varying elasticity.
-        Robust to inputs of shape (T,) or (T,1): GEModelTools passes
-        2-D path slices during compute_jacs and 1-D paths at runtime. """
     P1f  = P1.ravel()
     P2f  = P2.ravel()
     etaf = eta.ravel()
     T_   = P1f.shape[0]
     out  = np.empty(T_)
     for t in range(T_):
-        e    = etaf[t]
-        diff = e - 1.0
-        if diff < 0.0:
-            diff = -diff
-        if diff < 1e-10:
+        e = etaf[t]
+        if np.abs(e - 1.0) < 1e-6:  # threshold raised: catches eta=1 and nearby perturbations
             out[t] = P1f[t]**alpha * P2f[t]**(1.0 - alpha)
         else:
-            out[t] = (alpha*P1f[t]**(1.0 - e)
-                      + (1.0 - alpha)*P2f[t]**(1.0 - e))**(1.0/(1.0 - e))
+            out[t] = (alpha * P1f[t]**(1.0 - e)
+                      + (1.0 - alpha) * P2f[t]**(1.0 - e))**(1.0 / (1.0 - e))
     return out.reshape(P1.shape)
 
 @nb.njit
@@ -393,7 +409,17 @@ def prices(par, ini, ss,
     )
 
     PTH_eu_s[:] = PTH_eu_dom / E
-    PTH_us_s[:] = (1.0 + tau_x) * PTH_us_dom / E_us
+    #PTH_us_s[:] = (1.0 + tau_x) * PTH_us_dom / E_us
+    tau_x_LH = tau_x * (1.0 - par.tau_x_LH_exempt)
+    PTH_us_s[:] = price_index_4(
+        (1.0 + tau_x)    * PHH,
+        (1.0 + tau_x)    * PHL,
+        (1.0 + tau_x_LH) * PLH,
+        (1.0 + tau_x)    * PLL,
+        par.eta_TH,
+        par.omega_TH_HH_us, par.omega_TH_HL_us,
+        par.omega_TH_LH_us, par.omega_TH_LL_us,
+    ) / E_us    
 
     # c. foreign tradeable bundle (EU vs US)
     PF_TF[:] = price_index(PF_us, PF_eu, par.etaF_us, par.alpha_us)
@@ -530,7 +556,8 @@ def consumption(par, ini, ss,
                 CTH_HH_eu_s, CTH_HL_eu_s, CTH_LH_eu_s, CTH_LL_eu_s,
                 CTH_HH_us_s, CTH_HL_us_s, CTH_LH_us_s, CTH_LL_us_s,
                 CTF_us_res, PTH_us_dom, PTH_eu_dom,
-                etaF, eta_s):
+                etaF, eta_s,
+                E_us, tau_x):
     """
     Consumption allocation with 4 home-tradeable sectors.
 
@@ -581,10 +608,17 @@ def consumption(par, ini, ss,
     CTH_LH_eu_s[:] = par.omega_TH_LH_eu * (PLH / PTH_eu_dom)**(-par.eta_TH) * CTH_eu_s
     CTH_LL_eu_s[:] = par.omega_TH_LL_eu * (PLL / PTH_eu_dom)**(-par.eta_TH) * CTH_eu_s
 
-    CTH_HH_us_s[:] = par.omega_TH_HH_us * (PHH / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
-    CTH_HL_us_s[:] = par.omega_TH_HL_us * (PHL / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
-    CTH_LH_us_s[:] = par.omega_TH_LH_us * (PLH / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
-    CTH_LL_us_s[:] = par.omega_TH_LL_us * (PLL / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
+    #CTH_HH_us_s[:] = par.omega_TH_HH_us * (PHH / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
+    #CTH_HL_us_s[:] = par.omega_TH_HL_us * (PHL / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
+    #CTH_LH_us_s[:] = par.omega_TH_LH_us * (PLH / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
+    #CTH_LL_us_s[:] = par.omega_TH_LL_us * (PLL / PTH_us_dom)**(-par.eta_TH) * CTH_us_s
+
+    PTH_us_dom_tariff = PTH_us_s * E_us  # tariff-inclusive bundle in DKK
+    tau_x_LH = tau_x * (1.0 - par.tau_x_LH_exempt)
+    CTH_HH_us_s[:] = par.omega_TH_HH_us * ((1.0 + tau_x)    * PHH / PTH_us_dom_tariff)**(-par.eta_TH) * CTH_us_s
+    CTH_HL_us_s[:] = par.omega_TH_HL_us * ((1.0 + tau_x)    * PHL / PTH_us_dom_tariff)**(-par.eta_TH) * CTH_us_s
+    CTH_LH_us_s[:] = par.omega_TH_LH_us * ((1.0 + tau_x_LH) * PLH / PTH_us_dom_tariff)**(-par.eta_TH) * CTH_us_s
+    CTH_LL_us_s[:] = par.omega_TH_LL_us * ((1.0 + tau_x)    * PLL / PTH_us_dom_tariff)**(-par.eta_TH) * CTH_us_s
 
 @nb.njit
 def market_clearing(par, ini, ss,

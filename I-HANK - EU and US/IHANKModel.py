@@ -166,7 +166,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.eta_M_dk = 0.50 #VIRKER
 
         # e. foreign economy — sector-specific US export shares
-        par.share_X_us_H = 0.40   # HH and LH: high US export share #VIRKER
+        par.share_X_us_H = 0.24   # HH and LH: high US export share #VIRKER
         par.share_X_us_L = 0.02   # HL and LL: low US export share #VIRKER
         par.eta_s = par.etaF  #VIRKER
 
@@ -191,7 +191,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.M_eu_s_ss = np.nan
 
         # EU non-tradable sector
-        par.alphaT_eu = 0.70   # tradable share in EU consumption (free parameter)
+        par.alphaT_eu = 0.66   # tradable share in EU consumption (free parameter)
         par.etaT_eu  = 0.50 #VIRKER #    # T vs NT substitution elasticity in EU
 
         # US economy
@@ -215,17 +215,20 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.M_us_s_ss = np.nan
 
         # US non-tradable sector (mirrors EU)
-        par.alphaT_us = 0.70   # tradable share in US consumption
+        par.alphaT_us = par.alphaT_eu   # tradable share in US consumption
         par.etaT_us   = 0.50 #VIRKER #   # T vs NT substitution elasticity in US
 
         # f. government
-        par.tau_ss = 0.30
+        par.tau_ss = 0.24
         par.phi_B = 0.93
 
         # central bank
         par.float = False
         par.phi = 1.5
         par.psi_NFA = 0.0 #5e-2
+
+        #Out of border exports toggle
+        par.tau_x_LH_exempt = 0.0  # 0 = no exemption (original), 1 = LH fully exempt
 
         # g. grids
         par.a_min = 0.0
