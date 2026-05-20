@@ -343,7 +343,7 @@ def plot_wealth_group_losses(loss, weights, masks, ax=None):
 # -----------------------------------------------------------------
  
 def plot_sector_wealth_heatmap(loss, weights, masks, ax=None,
-                               cmap='RdBu_r'):
+                               cmap='RdBu_r', sector_order=None):
     """
     Heatmap of 20-period CEV loss on the sector x wealth-group grid.
     Each cell is annotated with the mean loss (top line) and the
@@ -368,6 +368,14 @@ def plot_sector_wealth_heatmap(loss, weights, masks, ax=None,
             grid_mass[i, j] = m
             if m > 0:
                 grid_loss[i, j] = (loss * w_cell).sum() / m
+
+    # reorder rows if requested
+    if sector_order is not None:
+        grid_loss = grid_loss[sector_order, :]
+        grid_mass = grid_mass[sector_order, :]
+        row_labels = [_SECTOR_LABELS[i] for i in sector_order]
+    else:
+        row_labels = _SECTOR_LABELS
  
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -380,7 +388,7 @@ def plot_sector_wealth_heatmap(loss, weights, masks, ax=None,
     ax.set_xticks(np.arange(n_wealth))
     ax.set_xticklabels(wealth_labels)
     ax.set_yticks(np.arange(n_sec))
-    ax.set_yticklabels(_SECTOR_LABELS)
+    ax.set_yticklabels(row_labels)
     ax.set_xlabel('Wealth group')
     ax.set_ylabel('Sector')
     ax.set_title('CEV loss by sector × wealth (% loss; pop. mass below)')
