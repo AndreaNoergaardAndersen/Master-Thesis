@@ -29,7 +29,11 @@ _CHANNEL_COLORS = {
     'inc' : '#d62728',
     'N'   : '#2ca02c',
 }
- 
+
+from thesis_graph_style import *
+
+set_thesis_style(use_latex=False)
+make_graph_folders()
  
 def plot_aggregate_decomposition(pop_losses, title=None, figsize=(9, 5.5)):
     """

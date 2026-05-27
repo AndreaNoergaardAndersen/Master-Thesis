@@ -19,6 +19,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from thesis_graph_style import *
+
+set_thesis_style(use_latex=False)
+make_graph_folders()
 
 def _pct_dev(path_arr, ss_val):
     """% deviation of a (T,1) path from SS, returned as (T,) ndarray."""
