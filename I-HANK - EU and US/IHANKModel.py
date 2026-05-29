@@ -281,7 +281,7 @@ class IHANKModelClass(EconModelClass,GEModelClass):
         par.std_eta_s  = 0.00
 
         # i. misc.
-        par.T = 200
+        par.T = 405
 
         par.max_iter_solve = 50_000
         par.max_iter_simulate = 50_000
